@@ -1,0 +1,10 @@
+CLAUDE.md
+notes/
+.gradle/
+build/
+**/build/
+.kotlin/
+.idea/
+local.properties
+*.iml
+.DS_Store
