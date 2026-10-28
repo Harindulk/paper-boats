@@ -4,12 +4,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.ComposeViewport
-import com.starfungames.paperboats.ui.ControllerPad
+import com.starfungames.paperboats.ui.ControllerApp
 
-// The phone's browser controller. The WebSocket link to the host comes in the next milestone.
+/** The page is served by the desktop host, so the game link lives on the same address. */
+private fun pageHost(): String = js("window.location.host")
+
 @OptIn(ExperimentalComposeUiApi::class)
 fun main() {
     ComposeViewport {
-        ControllerPad(colour = 0, status = "Waiting for the host", onInput = {}, modifier = Modifier.fillMaxSize())
+        ControllerApp(hostUrl = "ws://${pageHost()}/ws")
     }
 }

@@ -1,5 +1,7 @@
 package com.starfungames.paperboats
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,7 @@ import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.Race
 import com.starfungames.paperboats.ui.ControllerPad
+import com.starfungames.paperboats.ui.Palette
 import com.starfungames.paperboats.ui.RiverView
 import com.starfungames.paperboats.ui.Scoreboard
 import org.jetbrains.skia.EncodedImageFormat
@@ -53,4 +56,27 @@ class RenderTest {
     fun phoneController() {
         save("controller.png", 390, 760) { ControllerPad(colour = 2, status = "Ben: 2nd, 6 lights", onInput = {}, modifier = Modifier.fillMaxSize()) }
     }
+
+    @Test
+    fun lobbyWithQrCode() {
+        val players = listOf("Ana", "Ben", "Chen").mapIndexed { i, n -> Player(i + 1, n, i) }
+        save("lobby.png", 1280, 800) {
+            Box(Modifier.fillMaxSize().background(Palette.night)) { Lobby("http://192.168.1.24:8642/", players) }
+        }
+    }
+
+    @Test
+    fun resultsScreen() {
+        val players = listOf("Ana", "Ben", "Chen").mapIndexed { i, n -> Player(i + 1, n, i) }
+        val race = Race(players, seed = 4, length = 20f)
+        var t = 0f
+        while (!race.finished) {
+            race.step(1f / 60f, players.associate { it.id to PlayerInput(steer = kotlin.math.sin(t * it.id), paddle = it.id == 2) })
+            t += 1f / 60f
+        }
+        save("results.png", 1280, 800) {
+            Box(Modifier.fillMaxSize().background(Palette.night)) { Results(race.snapshot()) }
+        }
+    }
 }
+
