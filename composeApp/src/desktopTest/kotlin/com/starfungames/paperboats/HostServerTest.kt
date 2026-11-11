@@ -16,6 +16,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.cancelChildren
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -61,6 +63,42 @@ class HostServerTest {
             jobs.forEach { it.cancel() }
         } finally {
             clients.forEach { it.close() }
+            server.stop(100, 500)
+        }
+    }
+
+    @Test
+    fun sameClientStillSteersAfterReconnecting() = runBlocking {
+        val host = PartyHost(roundSeconds = 30f)
+        val server = startHostServer(host, port = 0)
+        val url = "ws://127.0.0.1:${server.engine.resolvedConnectors().first().port}/ws"
+        // The phone page keeps one client for every retry, so the second run must still carry inputs.
+        val phone = ControllerClient(HttpClient(CIO) { install(WebSockets) })
+        val heard = CopyOnWriteArrayList<HostMessage>()
+        suspend fun welcomes(n: Int) = withTimeout(5_000) {
+            while (heard.count { it is HostMessage.Welcome } < n) delay(20)
+            heard.filterIsInstance<HostMessage.Welcome>().last()
+        }
+        try {
+            val first = launch { phone.run(url, "Ana", rejoinId = null) { heard += it } }
+            val seat = welcomes(1)
+            host.start()
+            host.tick(PartySession.COUNTDOWN_SECONDS)
+            phone.send(PlayerInput(steer = 1f))
+            delay(200)
+            first.cancel()
+            delay(300)
+            launch { phone.run(url, "Ana", rejoinId = seat.playerId) { heard += it } }
+            assertEquals(seat, welcomes(2))
+            phone.send(PlayerInput(steer = 1f))
+            val leaned = withTimeoutOrNull(5_000) {
+                while (host.snapshot()!!.boats.single().lean < 0.5f) { host.tick(0.05f); delay(20) }
+                true
+            }
+            assertEquals(true, leaned, "steering after a reconnect reaches the host")
+            coroutineContext.cancelChildren()
+        } finally {
+            phone.close()
             server.stop(100, 500)
         }
     }

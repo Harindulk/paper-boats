@@ -10,7 +10,6 @@ import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.channels.Channel
-import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
@@ -34,11 +33,13 @@ class ControllerClient(private val http: HttpClient = HttpClient { install(WebSo
      * Pass the player id from an earlier Welcome as [rejoinId] to get the same boat back after a reload or a drop.
      */
     suspend fun run(url: String, name: String, rejoinId: Int?, onMessage: (HostMessage) -> Unit) {
+        last = null // a new host session has no inputs yet, so resend even an unchanged one
         http.webSocket(url) {
             send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), ControllerMessage.Join(name, rejoinId))))
             coroutineScope {
                 val writer = launch {
-                    outbox.consumeEach { send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), it))) }
+                    // A plain loop, not consumeEach: cancelling this writer must leave the outbox open for the next run.
+                    for (message in outbox) send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), message)))
                 }
                 for (frame in incoming) {
                     if (frame is Frame.Text) onMessage(ProtocolJson.decodeFromString(HostMessage.serializer(), frame.readText()))
