@@ -67,7 +67,7 @@ fun CountdownScreen(players: List<Player>, countdown: Float, fx: RiverFx, time: 
 
 /** The lobby: the QR large on the right, and a strip of river where each joining boat drops in with a pop. */
 @Composable
-fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, qr: @Composable (String, Modifier) -> Unit) {
+fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, offline: String = NO_WIFI, qr: @Composable (String, Modifier) -> Unit) {
     val text = rememberTextMeasurer()
     Row(Modifier.fillMaxSize().padding(64.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -98,7 +98,7 @@ fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, qr:
                 BasicText(joinUrl, style = body)
                 BasicText("Phones join on the same Wi-Fi.", style = soft)
             } else {
-                BasicText("Connect this computer to Wi-Fi so phones can join.", Modifier.width(380.dp), style = body)
+                BasicText(offline, Modifier.width(380.dp), style = body)
             }
         }
     }
@@ -149,6 +149,8 @@ fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float) {
 }
 
 private fun lightsLine(score: Int, tied: Boolean, leader: String): String {
-    val lights = if (score == 1) "1 light" else "$score lights"
+    val lights = if (score == 1) "1 lantern" else "$score lanterns"
     return if (tied) "$lights each. $leader went furthest." else "$lights carried home."
 }
+
+const val NO_WIFI = "Connect this computer to Wi-Fi so phones can join."

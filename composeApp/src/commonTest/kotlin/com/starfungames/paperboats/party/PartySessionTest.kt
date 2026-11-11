@@ -144,9 +144,9 @@ class PartySessionTest {
 
     @Test
     fun statusLinesReadNaturally() {
-        assertEquals("2nd, 5 lights, 12 s", describe(HostMessage.Status(Phase.Racing, score = 5, place = 2, secondsLeft = 12)))
+        assertEquals("2nd, 5 lanterns, 12 s", describe(HostMessage.Status(Phase.Racing, score = 5, place = 2, secondsLeft = 12)))
         assertEquals("Race starts in 3", describe(HostMessage.Status(Phase.Countdown, score = 0, place = 0, secondsLeft = 0, countdown = 3)))
-        assertEquals("Finished 1st with 1 light", describe(HostMessage.Status(Phase.Results, score = 1, place = 1, secondsLeft = 0)))
+        assertEquals("Finished 1st with 1 lantern", describe(HostMessage.Status(Phase.Results, score = 1, place = 1, secondsLeft = 0)))
         assertEquals(listOf("1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"), listOf(1, 2, 3, 4, 11, 12, 13, 21, 22).map(::ordinal))
     }
 

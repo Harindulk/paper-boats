@@ -124,11 +124,10 @@ fun ControllerApp(
 fun describe(status: HostMessage.Status): String = when (status.phase) {
     Phase.Lobby -> "You're on the water. Wait for the race."
     Phase.Countdown -> "Race starts in ${status.countdown}"
-    Phase.Racing -> "${ordinal(status.place)}, ${lights(status.score)}, ${status.secondsLeft} s"
-    Phase.Results -> "Finished ${ordinal(status.place)} with ${lights(status.score)}"
+    Phase.Racing -> "${ordinal(status.place)}, ${lanterns(status.score)}, ${status.secondsLeft} s"
+    Phase.Results -> "Finished ${ordinal(status.place)} with ${lanterns(status.score)}"
 }
 
-private fun lights(n: Int) = if (n == 1) "1 light" else "$n lights"
 private fun lanterns(n: Int) = if (n == 1) "1 lantern" else "$n lanterns"
 
 fun ordinal(n: Int): String = when {

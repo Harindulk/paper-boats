@@ -30,6 +30,8 @@ import kotlin.math.sin
 private const val VIEW_SPAN = 1.4f
 private const val VIEW_BEHIND = 0.35f
 private const val GO_SECONDS = 0.8f
+/** Boats are drawn larger than their hit circle so they read on a TV across the room. */
+private const val BOAT_DRAW_SCALE = 1.7f
 
 /** The big screen: the river, its lights and rocks, every boat, and the juice in [fx]. Shared by all platforms. */
 @Composable
@@ -68,7 +70,7 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             val wobble = if (boat.stunned) sin(time * 22f) * 14f else 0f
             val squash = fx.squash(id)
             drawBoat(
-                toScreen(boat.x, boat.y + bob), Race.BOAT_RADIUS * unit, Palette.player(boat.player.colour),
+                toScreen(boat.x, boat.y + bob), Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE, Palette.player(boat.player.colour),
                 degrees = roll + boat.lean * 14f + wobble, scaleX = 1f + 0.22f * squash, scaleY = 1f - 0.18f * squash,
             )
         }

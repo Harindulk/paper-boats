@@ -32,6 +32,7 @@ import com.starfungames.paperboats.game.RaceSnapshot
 import com.starfungames.paperboats.protocol.HostMessage.Phase
 import com.starfungames.paperboats.ui.CountdownScreen
 import com.starfungames.paperboats.ui.Lobby
+import com.starfungames.paperboats.ui.NO_WIFI
 import com.starfungames.paperboats.ui.Palette
 import com.starfungames.paperboats.ui.RaceScreen
 import com.starfungames.paperboats.ui.Results
@@ -39,12 +40,13 @@ import com.starfungames.paperboats.ui.RiverFx
 
 fun main() = application {
     val host = remember { PartyHost() }
-    val server = remember { runCatching { startHostServer(host) }.getOrNull() }
+    // Ktor binds in the background, so probe the port first to catch a second copy of the host.
+    val server = remember { runCatching { java.net.ServerSocket(DEFAULT_PORT).close(); startHostServer(host) }.getOrNull() }
     val joinUrl = remember { lanAddress()?.let { "http://$it:$DEFAULT_PORT/" } }
     DisposableEffect(Unit) { onDispose { server?.stop(500, 1000) } }
 
     Window(onCloseRequest = ::exitApplication, title = "Paper Boats", state = rememberWindowState(width = 1280.dp, height = 800.dp)) {
-        PartyScreen(host, if (server != null) joinUrl else null)
+        PartyScreen(host, if (server != null) joinUrl else null, if (server == null) "Port $DEFAULT_PORT is busy. Close the other Paper Boats window and start again." else NO_WIFI)
     }
 }
 
@@ -52,7 +54,7 @@ fun main() = application {
 private val keyboardKeys = listOf(Triple(Key.A, Key.D, Key.W), Triple(Key.DirectionLeft, Key.DirectionRight, Key.DirectionUp))
 
 @Composable
-fun PartyScreen(host: PartyHost, joinUrl: String?) {
+fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
     var phase by remember { mutableStateOf(host.phase) }
     var snapshot by remember { mutableStateOf<RaceSnapshot?>(null) }
     var players by remember { mutableStateOf(emptyList<Player>()) }
@@ -112,7 +114,7 @@ fun PartyScreen(host: PartyHost, joinUrl: String?) {
                 shown == Phase.Countdown -> CountdownScreen(players, countdown, fx, time)
                 shown == Phase.Racing && current != null -> RaceScreen(current, fx, time)
                 shown == Phase.Results && current != null -> Results(current, fx, time)
-                else -> Lobby(joinUrl, players, fx, time) { url, modifier -> QrCode(url, modifier) }
+                else -> Lobby(joinUrl, players, fx, time, offline) { url, modifier -> QrCode(url, modifier) }
             }
         }
     }
