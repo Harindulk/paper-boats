@@ -5,10 +5,18 @@ plugins {
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
     alias(libs.plugins.kotlinxSerialization)
+    alias(libs.plugins.androidKmpLibrary)
 }
 
 kotlin {
     jvm("desktop")
+
+    // The shared code as an Android library; the Android controller app itself lives in :androidApp.
+    android {
+        namespace = "com.starfungames.paperboats.shared"
+        compileSdk = 36
+        minSdk = 26
+    }
 
     @OptIn(org.jetbrains.kotlin.gradle.ExperimentalWasmDsl::class)
     wasmJs {

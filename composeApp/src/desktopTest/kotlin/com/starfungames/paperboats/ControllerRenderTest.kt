@@ -9,6 +9,7 @@ import com.starfungames.paperboats.protocol.HostMessage
 import com.starfungames.paperboats.protocol.HostMessage.Phase
 import com.starfungames.paperboats.ui.ControllerPad
 import com.starfungames.paperboats.ui.Countdown
+import com.starfungames.paperboats.ui.HostEntry
 import com.starfungames.paperboats.ui.LostHost
 import com.starfungames.paperboats.ui.NameEntry
 import com.starfungames.paperboats.ui.RaceResults
@@ -47,4 +48,10 @@ class ControllerRenderTest {
 
     @Test
     fun lostHost() = save("lost") { LostHost(onRejoin = {}) }
+
+    @Test
+    fun lostHostWithATypedAddress() = save("lost-typed") { LostHost(onRejoin = {}, changeHost = {}) }
+
+    @Test
+    fun hostEntry() = save("address") { HostEntry("192.168.1.24:8642", onAddress = {}, onConnect = {}) }
 }

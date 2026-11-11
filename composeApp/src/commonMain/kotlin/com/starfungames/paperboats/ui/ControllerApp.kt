@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.starfungames.paperboats.party.ControllerClient
@@ -36,7 +37,8 @@ import kotlin.coroutines.cancellation.CancellationException
 /**
  * The whole phone experience: pick a name, join the host at [hostUrl], then steer and paddle.
  * Platform bits come in as lambdas so this stays common: [buzz] vibrates, [saveSeat] remembers the
- * name and boat so a reload ([savedName], [savedSeatId]) rejoins the same boat.
+ * name and boat so a reload ([savedName], [savedSeatId]) rejoins the same boat. An app that typed its host's
+ * address passes [changeHost] so a player who can't reach it can fix the address.
  */
 @Composable
 fun ControllerApp(
@@ -45,6 +47,7 @@ fun ControllerApp(
     savedName: String = "",
     saveSeat: (name: String, id: Int) -> Unit = { _, _ -> },
     savedSeatId: Int? = null,
+    changeHost: (() -> Unit)? = null,
     client: ControllerClient = remember { ControllerClient() },
 ) {
     var name by remember { mutableStateOf(savedName) }
@@ -98,7 +101,7 @@ fun ControllerApp(
 
     val current = status
     when {
-        lost -> LostHost(onRejoin = { joins++ })
+        lost -> LostHost(onRejoin = { joins++ }, changeHost)
         current?.phase == Phase.Countdown -> Countdown(colour, current.countdown.toString())
         current?.phase == Phase.Results -> RaceResults(colour, current)
         else -> Box(Modifier.fillMaxSize()) {
@@ -176,7 +179,7 @@ internal fun RaceResults(colour: Int, status: HostMessage.Status) {
 }
 
 @Composable
-internal fun LostHost(onRejoin: () -> Unit) {
+internal fun LostHost(onRejoin: () -> Unit, changeHost: (() -> Unit)? = null) {
     Column(
         Modifier.fillMaxSize().background(Palette.night).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
@@ -184,6 +187,13 @@ internal fun LostHost(onRejoin: () -> Unit) {
         BasicText("Lost the host", style = Huge.copy(color = Palette.ink, fontSize = 64.sp, letterSpacing = (-1).sp))
         BasicText("Check you're on the same Wi-Fi as the big screen.", style = Body.copy(color = Palette.inkSoft, fontWeight = FontWeight.Normal))
         BigButton("Rejoin", onRejoin)
+        if (changeHost != null) {
+            BasicText(
+                "Change address",
+                Modifier.fillMaxWidth().clickable(onClick = changeHost).padding(16.dp),
+                style = Body.copy(color = Palette.ink, textAlign = TextAlign.Center),
+            )
+        }
     }
 }
 
@@ -208,7 +218,7 @@ internal fun NameEntry(name: String, onName: (String) -> Unit, onJoin: () -> Uni
 }
 
 @Composable
-private fun BigButton(label: String, onClick: () -> Unit) {
+internal fun BigButton(label: String, onClick: () -> Unit) {
     Box(
         Modifier.fillMaxWidth().background(Palette.light, RoundedCornerShape(50)).clickable(onClick = onClick).padding(20.dp),
         contentAlignment = Alignment.Center,
