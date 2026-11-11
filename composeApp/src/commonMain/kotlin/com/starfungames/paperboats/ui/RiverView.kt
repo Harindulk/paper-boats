@@ -81,7 +81,7 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             )
             // Name under the hull so everyone on the sofa can find their own boat.
             drawWord(text, boat.player.name, toScreen(boat.x, boat.y) + Offset(0f, Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE * 1.6f),
-                18.sp, Palette.player(boat.player.colour), 1f, 0.95f)
+                24.sp, Palette.player(boat.player.colour), 1f, 0.95f)
         }
         fx.particles.live.filter { it.kind == Kind.Spark }.forEach {
             drawCircle(fxColour(it.colour).copy(alpha = 1f - it.life / it.maxLife), it.size * unit * 1.8f, toScreen(it.x, it.y))
