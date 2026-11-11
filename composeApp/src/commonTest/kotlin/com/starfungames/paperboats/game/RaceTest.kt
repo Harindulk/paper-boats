@@ -79,6 +79,68 @@ class RaceTest {
     }
 
     @Test
+    fun tiesBreakByDistanceThenId() {
+        val view = { id: Int, y: Float -> BoatView(Player(id, "p$id", id), 0.5f, y, 3, stunned = false, boosting = false) }
+        val snapshot = RaceSnapshot(0f, 60f, listOf(view(3, 1f), view(1, 1f), view(2, 2f)), emptyList(), emptyList())
+        assertEquals(listOf(2, 1, 3), snapshot.standings.map { it.player.id })
+    }
+
+    @Test
+    fun collectingALightEmitsOneEventAtTheLight() {
+        val race = Race(listOf(players.first()), seed = 9)
+        var t = 0f
+        while (race.snapshot().boats.single().score == 0) {
+            val lightsBefore = race.snapshot().lights
+            race.drainEvents()
+            race.step(1f / 60f, mapOf(1 to PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f)))
+            t += 1f / 60f
+            assertTrue(t < 30f, "never collected a light")
+            if (race.snapshot().boats.single().score == 1) {
+                val events = race.drainEvents().filterIsInstance<LightCollected>()
+                val eaten = lightsBefore - race.snapshot().lights.toSet()
+                assertEquals(1, events.size)
+                assertEquals(1, events.single().playerId)
+                assertTrue(eaten.any { it.x == events.single().x && it.y == events.single().y }, "the event sits where the light was")
+                assertEquals(emptyList(), race.drainEvents())
+            }
+        }
+    }
+
+    @Test
+    fun hittingARockEmitsRockHitOnce() {
+        val race = Race(listOf(players.first()), seed = 9)
+        var hits = 0
+        var rockEvents = 0
+        var wasStunned = false
+        play(race, 30f) { t ->
+            val stunned = race.snapshot().boats.single().stunned
+            if (stunned && !wasStunned) hits++
+            wasStunned = stunned
+            rockEvents += race.drainEvents().count { it is RockHit }
+            mapOf(1 to PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f))
+        }
+        rockEvents += race.drainEvents().count { it is RockHit }
+        if (race.snapshot().boats.single().stunned && !wasStunned) hits++
+        assertTrue(hits > 0, "the sweep should hit a rock")
+        assertEquals(hits, rockEvents, "one RockHit per bump, not per frame touching the rock")
+    }
+
+    @Test
+    fun paddlePressEmitsPaddledOnRisingEdgeOnly() {
+        val race = Race(listOf(players.first()), seed = 5)
+        var frame = 0
+        play(race, 0.5f) { mapOf(1 to PlayerInput(paddle = frame++ % 15 < 10)) }
+        assertEquals(2, race.drainEvents().count { it is Paddled && it.playerId == 1 })
+    }
+
+    @Test
+    fun leanFollowsSteer() {
+        val race = Race(listOf(players.first()), seed = 5)
+        play(race, 1f) { mapOf(1 to PlayerInput(steer = 1f)) }
+        assertTrue(race.snapshot().boats.single().lean > 0.8f)
+    }
+
+    @Test
     fun aRaceNeedsPlayers() {
         assertFailsWith<IllegalArgumentException> { Race(emptyList(), seed = 1) }
     }

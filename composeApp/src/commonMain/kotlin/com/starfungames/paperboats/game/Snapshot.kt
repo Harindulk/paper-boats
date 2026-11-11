@@ -9,7 +9,7 @@ data class Light(val id: Int, val x: Float, val y: Float)
 data class Rock(val x: Float, val y: Float, val radius: Float)
 
 @Serializable
-data class BoatView(val player: Player, val x: Float, val y: Float, val score: Int, val stunned: Boolean, val boosting: Boolean)
+data class BoatView(val player: Player, val x: Float, val y: Float, val score: Int, val stunned: Boolean, val boosting: Boolean, val lean: Float = 0f)
 
 /** Everything the big screen needs to draw one frame. */
 @Serializable
@@ -22,6 +22,6 @@ data class RaceSnapshot(
 ) {
     val timeLeft: Float get() = (length - elapsed).coerceAtLeast(0f)
 
-    /** Players ordered by lights collected, then by distance travelled. */
-    val standings: List<BoatView> get() = boats.sortedWith(compareByDescending<BoatView> { it.score }.thenByDescending { it.y })
+    /** Players ordered by lights collected, then by distance travelled, then by id so ties stay stable. */
+    val standings: List<BoatView> get() = boats.sortedWith(compareByDescending<BoatView> { it.score }.thenByDescending { it.y }.thenBy { it.player.id })
 }

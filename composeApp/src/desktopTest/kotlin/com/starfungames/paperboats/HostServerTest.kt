@@ -2,6 +2,7 @@ package com.starfungames.paperboats
 
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.party.ControllerClient
+import com.starfungames.paperboats.party.PartySession
 import com.starfungames.paperboats.protocol.HostMessage
 import com.starfungames.paperboats.protocol.HostMessage.Phase
 import io.ktor.client.HttpClient
@@ -33,6 +34,7 @@ class HostServerTest {
             assertEquals(setOf(0, 1), heard.map { list -> list.filterIsInstance<HostMessage.Welcome>().single().colour }.toSet())
 
             host.start()
+            host.tick(PartySession.COUNTDOWN_SECONDS)
             clients[0].send(PlayerInput(steer = 1f, paddle = true))
             val startX = host.snapshot()!!.boats.first { it.player.name == "Phone 1" }.x
             withTimeout(10_000) {

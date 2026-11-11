@@ -10,7 +10,7 @@ import kotlinx.serialization.json.Json
 sealed interface ControllerMessage {
     @Serializable
     @SerialName("join")
-    data class Join(val name: String) : ControllerMessage
+    data class Join(val name: String, val rejoinId: Int? = null) : ControllerMessage
 
     @Serializable
     @SerialName("input")
@@ -28,10 +28,17 @@ sealed interface HostMessage {
 
     @Serializable
     @SerialName("status")
-    data class Status(val phase: Phase, val score: Int, val place: Int, val secondsLeft: Int) : HostMessage
+    data class Status(val phase: Phase, val score: Int, val place: Int, val secondsLeft: Int, val countdown: Int = 0) : HostMessage
 
-    enum class Phase { Lobby, Racing, Results }
+    /** A short phone vibration for something that just happened to this player. */
+    @Serializable
+    @SerialName("buzz")
+    data class Buzz(val kind: BuzzKind) : HostMessage
+
+    enum class Phase { Lobby, Countdown, Racing, Results }
 }
+
+enum class BuzzKind { Light, Rock, Win }
 
 val ProtocolJson = Json {
     classDiscriminator = "type"

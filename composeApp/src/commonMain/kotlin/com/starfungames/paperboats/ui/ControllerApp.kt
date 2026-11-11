@@ -47,6 +47,7 @@ fun ControllerApp(hostUrl: String, client: ControllerClient = remember { Control
                 when (message) {
                     is HostMessage.Welcome -> { colour = message.colour; status = "You're on the water. Wait for the race." }
                     is HostMessage.Status -> status = describe(message)
+                    is HostMessage.Buzz -> Unit
                 }
             }
         }
@@ -58,6 +59,7 @@ fun ControllerApp(hostUrl: String, client: ControllerClient = remember { Control
 /** One line for the top of the phone, from the host's status. */
 fun describe(status: HostMessage.Status): String = when (status.phase) {
     Phase.Lobby -> "You're on the water. Wait for the race."
+    Phase.Countdown -> "Race starts in ${status.countdown}"
     Phase.Racing -> "${ordinal(status.place)}, ${lights(status.score)}, ${status.secondsLeft} s"
     Phase.Results -> "Finished ${ordinal(status.place)} with ${lights(status.score)}"
 }

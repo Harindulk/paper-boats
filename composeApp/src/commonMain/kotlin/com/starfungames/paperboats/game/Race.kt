@@ -22,6 +22,7 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
     private val boats = players.mapIndexed { i, p -> Boat(p, x = laneX(i, players.size)) }
     private val lights = mutableListOf<Light>()
     private val rocks = mutableListOf<Rock>()
+    private val events = mutableListOf<RaceEvent>()
     private var nextLightId = 0
     private var generatedTo = 0f
 
@@ -49,10 +50,13 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
         rocks.removeAll { it.y < tail }
     }
 
+    /** Events since the last call, in the order they happened. */
+    fun drainEvents(): List<RaceEvent> = events.toList().also { events.clear() }
+
     fun snapshot() = RaceSnapshot(
         elapsed = elapsed,
         length = length,
-        boats = boats.map { BoatView(it.player, it.x, it.y, it.score, it.stun > 0f, it.boost > 0f) },
+        boats = boats.map { BoatView(it.player, it.x, it.y, it.score, it.stun > 0f, it.boost > 0f, (it.vx / STEER_SPEED).coerceIn(-1f, 1f)) },
         lights = lights.toList(),
         rocks = rocks.toList(),
     )
@@ -64,7 +68,10 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
         } else {
             val steer = input.steer.coerceIn(-1f, 1f)
             boat.vx += (steer * STEER_SPEED - boat.vx) * (1f - DRAG_PER_SECOND.pow(dt))
-            if (input.paddle && !boat.paddleHeld) boat.boost = BOOST_SECONDS
+            if (input.paddle && !boat.paddleHeld) {
+                boat.boost = BOOST_SECONDS
+                events += Paddled(boat.player.id, boat.x, boat.y)
+            }
         }
         boat.paddleHeld = input.paddle
         boat.boost = (boat.boost - dt).coerceAtLeast(0f)
@@ -79,12 +86,16 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
         for (boat in boats) {
             lights.removeAll { light ->
                 val hit = hypot(light.x - boat.x, light.y - boat.y) < BOAT_RADIUS + LIGHT_RADIUS
-                if (hit) boat.score += 1
+                if (hit) {
+                    boat.score += 1
+                    events += LightCollected(boat.player.id, light.x, light.y)
+                }
                 hit
             }
             if (boat.stun <= 0f) {
                 rocks.firstOrNull { hypot(it.x - boat.x, it.y - boat.y) < BOAT_RADIUS + it.radius }?.let { rock ->
                     boat.stun = STUN_SECONDS
+                    events += RockHit(boat.player.id, boat.x, boat.y)
                     boat.boost = 0f
                     boat.vx = if (boat.x < rock.x) -STEER_SPEED else STEER_SPEED
                 }
