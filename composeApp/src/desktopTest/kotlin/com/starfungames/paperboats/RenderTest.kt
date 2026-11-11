@@ -3,9 +3,7 @@ package com.starfungames.paperboats
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.use
 import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.LightCollected
 import com.starfungames.paperboats.game.Player
@@ -19,7 +17,6 @@ import com.starfungames.paperboats.ui.Palette
 import com.starfungames.paperboats.ui.RaceScreen
 import com.starfungames.paperboats.ui.Results
 import com.starfungames.paperboats.ui.RiverFx
-import org.jetbrains.skia.EncodedImageFormat
 import java.io.File
 import kotlin.math.sin
 import kotlin.test.Test
@@ -31,11 +28,9 @@ class RenderTest {
     private val dt = 1f / 60f
 
     private fun save(name: String, width: Int, height: Int, content: @androidx.compose.runtime.Composable () -> Unit) {
-        ImageComposeScene(width, height, content = content).use { scene ->
-            val bytes = scene.render().encodeToData(EncodedImageFormat.PNG)!!.bytes
-            File(out, name).writeBytes(bytes)
-            assertTrue(bytes.size > 1_000)
-        }
+        val bytes = renderPng(width, height, content = content)
+        File(out, name).writeBytes(bytes)
+        assertTrue(bytes.size > 1_000)
     }
 
     private fun players(vararg names: String) = names.mapIndexed { i, n -> Player(i + 1, n, i) }
