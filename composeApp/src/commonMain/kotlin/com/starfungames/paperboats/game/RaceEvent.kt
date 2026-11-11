@@ -21,3 +21,7 @@ data class RockHit(override val playerId: Int, override val x: Float, override v
 /** A player pressed paddle and the boat surged. */
 @Serializable
 data class Paddled(override val playerId: Int, override val x: Float, override val y: Float) : RaceEvent
+
+/** A paddling boat rammed this one ([playerId]) and spun it out; [stole] says a lantern went to [by]. */
+@Serializable
+data class Rammed(override val playerId: Int, override val x: Float, override val y: Float, val by: Int, val stole: Boolean) : RaceEvent

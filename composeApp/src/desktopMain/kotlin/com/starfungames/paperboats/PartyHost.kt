@@ -5,6 +5,7 @@ import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
+import com.starfungames.paperboats.game.Rammed
 import com.starfungames.paperboats.game.RockHit
 import com.starfungames.paperboats.party.PartySession
 import com.starfungames.paperboats.protocol.BuzzKind
@@ -67,7 +68,7 @@ class PartyHost(roundSeconds: Float = 60f) {
         screenEvents += events
         for (event in events) when (event) {
             is LightCollected -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Light))
-            is RockHit -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
+            is RockHit, is Rammed -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
             else -> Unit
         }
         // start() and leave() can change the phase too, so compare with what the phones last heard.

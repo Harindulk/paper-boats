@@ -101,6 +101,21 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
                 }
             }
         }
+        // A paddling boat that runs into a cruising one spins it out and takes one of its lanterns.
+        for (rammer in boats) {
+            if (rammer.boost <= 0f || rammer.stun > 0f) continue
+            val victim = boats.firstOrNull {
+                it !== rammer && it.stun <= 0f && it.boost <= 0f && hypot(it.x - rammer.x, it.y - rammer.y) < RAM_REACH
+            } ?: continue
+            val stole = victim.score > 0
+            if (stole) {
+                victim.score -= 1
+                rammer.score += 1
+            }
+            victim.stun = STUN_SECONDS
+            victim.vx = if (victim.x < rammer.x) -STEER_SPEED else STEER_SPEED
+            events += Rammed(victim.player.id, victim.x, victim.y, rammer.player.id, stole)
+        }
     }
 
     private fun generateUpTo(y: Float) {
@@ -134,6 +149,8 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
         const val BOAT_RADIUS = 0.028f
         const val LIGHT_RADIUS = 0.018f
         const val BANK = 0.06f
+        /** Boats are drawn larger than their hit circle, so a ram counts when the drawn hulls touch. */
+        private const val RAM_REACH = 2.5f * BOAT_RADIUS
         private const val MAX_STEP = 0.1f
         private const val CURRENT_SPEED = 0.18f
         private const val BOOST_SPEED = 0.22f

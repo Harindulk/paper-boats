@@ -7,7 +7,7 @@ object Palette {
     val water = Color(0xFF123247)
     val waterLight = Color(0xFF1B4560)
     val bank = Color(0xFF0E2419)
-    val rock = Color(0xFF3A4650)
+    val rock = Color(0xFF07121A)
     val light = Color(0xFFFFC46B)
     val paper = Color(0xFFF4F1EA)
     val ink = Color(0xFFF2F5F4)

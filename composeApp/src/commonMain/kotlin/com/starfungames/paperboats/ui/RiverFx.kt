@@ -6,6 +6,7 @@ import com.starfungames.paperboats.game.Paddled
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
+import com.starfungames.paperboats.game.Rammed
 import com.starfungames.paperboats.game.RockHit
 import com.starfungames.paperboats.ui.fx.Camera
 import com.starfungames.paperboats.ui.fx.Particles
@@ -63,6 +64,11 @@ class RiverFx(seed: Long = 7) {
             is RockHit -> {
                 particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 18, random)
                 camera.addTrauma(ROCK_TRAUMA)
+            }
+            is Rammed -> {
+                particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 24, random)
+                camera.addTrauma(ROCK_TRAUMA)
+                if (event.stole) pending += Pop(event.x, event.y, time)
             }
             is Paddled -> {
                 paddledAt[event.playerId] = time

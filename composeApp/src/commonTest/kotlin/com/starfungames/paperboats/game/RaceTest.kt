@@ -1,10 +1,12 @@
 package com.starfungames.paperboats.game
 
 import kotlin.math.abs
+import kotlin.math.hypot
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 class RaceTest {
@@ -123,6 +125,62 @@ class RaceTest {
         if (race.snapshot().boats.single().stunned && !wasStunned) hits++
         assertTrue(hits > 0, "the sweep should hit a rock")
         assertEquals(hits, rockEvents, "one RockHit per bump, not per frame touching the rock")
+    }
+
+    /** Ben sweeps for lanterns while Ana hangs back; then Ana chases Ben and paddles once close. Returns the first ram. */
+    private fun chase(race: Race, sweepSeconds: Float): Pair<Rammed, Pair<RaceSnapshot, RaceSnapshot>>? {
+        var t = 0f
+        while (t < 40f) {
+            val before = race.snapshot()
+            val ana = before.boats.first { it.player.id == 1 }
+            val ben = before.boats.first { it.player.id == 2 }
+            val chasing = t > sweepSeconds
+            race.step(1f / 60f, mapOf(
+                1 to if (chasing) PlayerInput(((ben.x - ana.x) * 12f).coerceIn(-1f, 1f), paddle = hypot(ben.x - ana.x, ben.y - ana.y) < 0.12f && (t * 3f).toInt() % 2 == 0) else PlayerInput(),
+                2 to PlayerInput(steer = if (chasing) 0f else if ((t / 1.1f).toInt() % 2 == 0) 1f else -1f),
+            ))
+            race.drainEvents().filterIsInstance<Rammed>().firstOrNull()?.let { return it to (before to race.snapshot()) }
+            t += 1f / 60f
+        }
+        return null
+    }
+
+    @Test
+    fun aPaddlingBoatRamsAnotherAndStealsALantern() {
+        val race = Race(players, seed = 4)
+        val (ram, states) = assertNotNull(chase(race, sweepSeconds = 12f), "Ana should catch Ben")
+        val (before, after) = states
+        fun score(s: RaceSnapshot, id: Int) = s.boats.first { it.player.id == id }.score
+        assertEquals(2, ram.playerId, "Ben is the one rammed")
+        assertEquals(1, ram.by)
+        assertTrue(after.boats.first { it.player.id == 2 }.stunned, "the rammed boat spins out")
+        assertTrue(score(before, 2) > 0, "test setup: Ben had a lantern to lose")
+        assertTrue(ram.stole)
+        assertEquals(score(before, 2) - 1, score(after, 2), "Ben loses a lantern")
+        assertEquals(score(before, 1) + 1, score(after, 1), "Ana takes it")
+    }
+
+    @Test
+    fun ramWithNothingToStealOnlyStuns() {
+        val race = Race(players, seed = 4)
+        val (ram, states) = assertNotNull(chase(race, sweepSeconds = 0f))
+        val (before, after) = states
+        if (before.boats.first { it.player.id == 2 }.score == 0) {
+            assertTrue(!ram.stole)
+            assertEquals(0, after.boats.first { it.player.id == 2 }.score, "scores never go negative")
+        }
+    }
+
+    @Test
+    fun aStunnedBoatCannotBeRammedAgainStraightAway() {
+        val race = Race(players, seed = 4)
+        assertNotNull(chase(race, sweepSeconds = 0f))
+        var again = 0
+        repeat(30) { // 0.5 s, inside the stun
+            race.step(1f / 60f, mapOf(1 to PlayerInput(paddle = it % 2 == 0)))
+            again += race.drainEvents().count { it is Rammed }
+        }
+        assertEquals(0, again)
     }
 
     @Test

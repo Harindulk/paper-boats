@@ -8,6 +8,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -53,7 +54,12 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             val w = it.size * unit * (1.4f + 1.4f * (1f - fade))
             drawOval(Palette.paper.copy(alpha = 0.26f * fade), toScreen(it.x, it.y) - Offset(w, w * 0.55f), Size(w * 2, w * 1.1f))
         }
-        snapshot.rocks.forEach { drawCircle(Palette.rock, it.radius * unit, toScreen(it.x, it.y)) }
+        // Rocks are darker than the water with a ring of foam, so they never read like a lantern's halo.
+        snapshot.rocks.forEach {
+            val at = toScreen(it.x, it.y)
+            drawCircle(Palette.paper.copy(alpha = 0.4f), it.radius * unit * 1.12f, at, style = Stroke(width = it.radius * unit * 0.16f))
+            drawCircle(Palette.rock, it.radius * unit, at)
+        }
         snapshot.lights.forEach {
             val at = toScreen(it.x, it.y + sin(time * 2.6f + it.id * 1.9f) * 0.004f)
             val r = Race.LIGHT_RADIUS * unit * (1f + 0.06f * sin(time * 3.1f + it.id))
@@ -73,6 +79,9 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
                 toScreen(boat.x, boat.y + bob), Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE, Palette.player(boat.player.colour),
                 degrees = roll + boat.lean * 14f + wobble, scaleX = 1f + 0.22f * squash, scaleY = 1f - 0.18f * squash,
             )
+            // Name under the hull so everyone on the sofa can find their own boat.
+            drawWord(text, boat.player.name, toScreen(boat.x, boat.y) + Offset(0f, Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE * 1.6f),
+                18.sp, Palette.player(boat.player.colour), 1f, 0.95f)
         }
         fx.particles.live.filter { it.kind == Kind.Spark }.forEach {
             drawCircle(fxColour(it.colour).copy(alpha = 1f - it.life / it.maxLife), it.size * unit * 1.8f, toScreen(it.x, it.y))
