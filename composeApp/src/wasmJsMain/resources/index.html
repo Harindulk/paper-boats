@@ -4,8 +4,37 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
   <title>Paper Boats controller</title>
-  <style>html, body { margin: 0; height: 100%; background: #0b1a24; overflow: hidden; touch-action: none; }</style>
-  <script src="controller.js"></script>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b1a24; overflow: hidden; touch-action: none; }
+    .note { position: fixed; inset: auto 24px 45% 24px; color: #f2f5f4; font: 600 22px/1.4 system-ui, -apple-system, sans-serif; }
+    .bar { display: block; margin-top: 16px; height: 6px; width: 96px; background: #ffc46b; animation: drift 1.4s ease-in-out infinite alternate; }
+    @keyframes drift { from { transform: translateX(0); } to { transform: translateX(calc(100vw - 48px - 96px)); } }
+    @media (prefers-reduced-motion: reduce) { .bar { animation: none; } }
+    #old, #failed { display: none; }
+    .old #loading, .failed #loading { display: none; }
+    .old #old, .failed #failed { display: block; }
+  </style>
 </head>
-<body></body>
+<body>
+  <p id="loading" class="note">Unfolding your boat…<span class="bar"></span></p>
+  <p id="old" class="note">This browser is too old for Paper Boats. Update it, or use another phone.</p>
+  <p id="failed" class="note">Couldn't load the controller. Reload to try again.</p>
+  <script>
+    // Kotlin/Wasm needs WasmGC: validate a one-type module that declares a struct, before downloading ~8 MB.
+    function wasmGcSupported() {
+      try {
+        return typeof WebAssembly === 'object' &&
+          WebAssembly.validate(new Uint8Array([0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 95, 1, 120, 0]));
+      } catch (e) { return false; }
+    }
+    if (wasmGcSupported()) {
+      var s = document.createElement('script');
+      s.src = 'controller.js';
+      s.onerror = function () { document.documentElement.className = 'failed'; };
+      document.body.appendChild(s);
+    } else {
+      document.documentElement.className = 'old';
+    }
+  </script>
+</body>
 </html>
