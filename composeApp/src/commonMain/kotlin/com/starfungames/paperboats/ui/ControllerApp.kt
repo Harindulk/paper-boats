@@ -43,7 +43,7 @@ fun ControllerApp(hostUrl: String, client: ControllerClient = remember { Control
     }
     LaunchedEffect(hostUrl) {
         val result = runCatching {
-            client.run(hostUrl, name) { message ->
+            client.run(hostUrl, name, rejoinId = null) { message ->
                 when (message) {
                     is HostMessage.Welcome -> { colour = message.colour; status = "You're on the water. Wait for the race." }
                     is HostMessage.Status -> status = describe(message)

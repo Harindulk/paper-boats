@@ -38,6 +38,7 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.swing)
                 implementation(libs.ktor.server.cio)
                 implementation(libs.ktor.server.websockets)
+                implementation(libs.ktor.server.compression)
                 implementation(libs.ktor.client.cio)
                 implementation(libs.zxing.core)
             }

@@ -29,10 +29,13 @@ class ControllerClient(private val http: HttpClient = HttpClient { install(WebSo
         outbox.trySend(ControllerMessage.Input(input.steer, input.paddle))
     }
 
-    /** Connects and stays connected until the socket closes; [onMessage] runs for every host message. */
-    suspend fun run(url: String, name: String, onMessage: (HostMessage) -> Unit) {
+    /**
+     * Connects and stays connected until the socket closes; [onMessage] runs for every host message.
+     * Pass the player id from an earlier Welcome as [rejoinId] to get the same boat back after a reload or a drop.
+     */
+    suspend fun run(url: String, name: String, rejoinId: Int?, onMessage: (HostMessage) -> Unit) {
         http.webSocket(url) {
-            send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), ControllerMessage.Join(name))))
+            send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), ControllerMessage.Join(name, rejoinId))))
             coroutineScope {
                 val writer = launch {
                     outbox.consumeEach { send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), it))) }
