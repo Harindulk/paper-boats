@@ -1,10 +1,13 @@
 package com.starfungames.paperboats.party
 
+import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.Race
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
+import com.starfungames.paperboats.game.River
+import com.starfungames.paperboats.game.awards
 import com.starfungames.paperboats.protocol.HostMessage
 import com.starfungames.paperboats.protocol.HostMessage.Phase
 import kotlin.math.ceil
@@ -19,6 +22,10 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
     private val away = mutableSetOf<Int>()
     private var nextId = 1
     private var race: Race? = null
+    private var racesRun = 0
+    /** The race's events not yet drained by the host, and every event of the race for the awards. */
+    private val undrained = mutableListOf<RaceEvent>()
+    private val history = mutableListOf<RaceEvent>()
 
     var phase = Phase.Lobby
         private set
@@ -27,6 +34,13 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         private set
 
     val players: List<Player> get() = seated.values.toList()
+
+    /** The river of the race being counted down or raced; rivers take turns, one per race. */
+    var river = River.entries.first()
+        private set
+
+    /** 1 for the party's first race, counting the one being counted down. */
+    val raceNumber: Int get() = racesRun + if (phase == Phase.Countdown) 1 else 0
 
     /**
      * Seats a new player and gives them the first free colour, or returns null when all seats are taken.
@@ -61,6 +75,9 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         check(canStart()) { "Cannot start: phase=$phase, players=${seated.size}" }
         dropAway()
         race = null
+        undrained.clear()
+        history.clear()
+        river = River.entries[racesRun % River.entries.size]
         inputs.clear()
         countdownLeft = COUNTDOWN_SECONDS
         phase = Phase.Countdown
@@ -70,7 +87,8 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         if (phase == Phase.Countdown) {
             countdownLeft = (countdownLeft - dt).coerceAtLeast(0f)
             if (countdownLeft == 0f) {
-                race = Race(players, seed = seeds(), length = roundSeconds)
+                race = Race(players, seed = seeds(), length = roundSeconds, river = river)
+                racesRun++
                 phase = Phase.Racing
             }
             return
@@ -78,10 +96,18 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         val current = race ?: return
         if (phase != Phase.Racing) return
         current.step(dt, inputs)
+        current.drainEvents().let {
+            undrained += it
+            history += it
+        }
         if (current.finished) phase = Phase.Results
     }
 
-    fun drainEvents(): List<RaceEvent> = race?.drainEvents().orEmpty()
+    /** Race events since the last call, each returned once. The awards keep their own copy. */
+    fun drainEvents(): List<RaceEvent> = undrained.toList().also { undrained.clear() }
+
+    /** The finished race's awards, or nothing before the results. */
+    fun awards(): List<Award> = if (phase == Phase.Results) awards(history, race?.snapshot()?.standings.orEmpty()) else emptyList()
 
     fun snapshot(): RaceSnapshot? = race?.snapshot()
 
@@ -92,7 +118,8 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         val score = standings.firstOrNull { it.player.id == id }?.score ?: 0
         val secondsLeft = if (phase == Phase.Racing && snapshot != null) ceil(snapshot.timeLeft).toInt() else 0
         val countdown = if (phase == Phase.Countdown) ceil(countdownLeft).toInt() else 0
-        return HostMessage.Status(phase, score, place, secondsLeft, countdown)
+        val award = awards().firstOrNull { it.playerId == id }?.let { "${it.title}. ${it.line}." }
+        return HostMessage.Status(phase, score, place, secondsLeft, countdown, award)
     }
 
     private fun dropAway() {

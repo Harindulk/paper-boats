@@ -22,15 +22,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.Race
 import com.starfungames.paperboats.game.RaceSnapshot
+import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.ui.fx.Ease
 import kotlin.math.ceil
 import kotlin.math.sin
@@ -39,10 +42,14 @@ import kotlin.math.sin
 private val title = TextStyle(color = Palette.ink, fontSize = 72.sp, fontWeight = FontWeight.SemiBold, lineHeight = 76.sp)
 private val body = TextStyle(color = Palette.ink, fontSize = 26.sp, lineHeight = 34.sp)
 private val soft = body.copy(color = Palette.inkSoft)
+private val awardTitle = TextStyle(color = Palette.ink, fontSize = 48.sp, fontWeight = FontWeight.SemiBold, lineHeight = 54.sp)
 
-/** The race: the river with its juice, and the scoreboard beside it. [countdown] overlays the numbers before the start. */
+/**
+ * The race: the river with its juice, and the scoreboard beside it.
+ * [countdown] overlays the numbers before the start, under the [heading] that names the race.
+ */
 @Composable
-fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Float? = null) {
+fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Float? = null, heading: String? = null) {
     Row(Modifier.fillMaxSize()) {
         Box(Modifier.weight(1f).fillMaxHeight()) {
             RiverView(snapshot, fx, Modifier.fillMaxSize(), time)
@@ -50,19 +57,25 @@ fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Floa
                 val text = rememberTextMeasurer()
                 val number = ceil(countdown).toInt().coerceAtLeast(1)
                 val since = number - countdown
-                Canvas(Modifier.fillMaxSize()) { drawCallout(text, "$number", Ease.outBack(since / 0.4f), 1f, Palette.paper) }
+                Canvas(Modifier.fillMaxSize()) {
+                    val riverWidth = minOf(size.width, size.height * 0.8f) * (1 - 2 * Race.BANK)
+                    if (heading != null) drawWord(text, heading, Offset(center.x, size.height * 0.2f), 56.sp, Palette.paper, 1f, 1f, riverWidth * 0.9f)
+                    drawCallout(text, "$number", Ease.outBack(since / 0.4f), 1f, Palette.paper)
+                }
             }
         }
         Scoreboard(snapshot, Modifier.width(300.dp).fillMaxHeight())
     }
 }
 
-/** The countdown on the river: every boat on its starting lane, the course still dark, a big number per second. */
+/** The countdown on the river: every boat on its starting lane, the course still dark, the race's name and a big number per second. */
 @Composable
-fun CountdownScreen(players: List<Player>, countdown: Float, fx: RiverFx, time: Float) {
+fun CountdownScreen(players: List<Player>, countdown: Float, fx: RiverFx, time: Float, raceNumber: Int = 1, river: River = River.LanternCreek) {
     if (players.isEmpty()) return
-    val preview = remember(players) { Race(players, seed = 0).snapshot().copy(lights = emptyList(), rocks = emptyList()) }
-    RaceScreen(preview, fx, time, countdown)
+    val preview = remember(players, river) {
+        Race(players, seed = 0, river = river).snapshot().copy(lights = emptyList(), rocks = emptyList(), logs = emptyList(), whirlpools = emptyList())
+    }
+    RaceScreen(preview, fx, time, countdown, "Race $raceNumber: ${river.title}")
 }
 
 /** The lobby: the QR large on the right, and a strip of river where each joining boat drops in with a pop. */
@@ -104,9 +117,9 @@ fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, off
     }
 }
 
-/** The finish: the winner's boat large, its lanterns lifting into the sky, and the standings sliding in. */
+/** The finish: the winner's boat large, its lanterns lifting into the sky, the standings sliding in, then the [awards]. */
 @Composable
-fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float) {
+fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float, awards: List<Award> = emptyList()) {
     val standings = snapshot.standings
     val winner = standings.first()
     val tied = standings.filter { it.score == winner.score }
@@ -122,6 +135,20 @@ fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float) {
                 degrees = sin(time * 2.1f) * 5f,
             )
             drawSkyParticles(fx)
+        }
+        // Awards sit in the sky above the winner and arrive after the standings, one by one.
+        Column(Modifier.align(Alignment.TopStart).fillMaxWidth(0.46f).padding(start = 64.dp, top = 72.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+            awards.forEachIndexed { i, award ->
+                val boat = standings.firstOrNull { it.player.id == award.playerId } ?: return@forEachIndexed
+                val t = Ease.outBack((age - 1.1f - i * 0.25f) / 0.45f)
+                Column(Modifier.graphicsLayer { alpha = t.coerceIn(0f, 1f); scaleX = t; scaleY = t; transformOrigin = TransformOrigin(0f, 0.5f) }) {
+                    BasicText(award.title, style = awardTitle)
+                    BasicText(
+                        "${boat.player.name} ${award.line.replaceFirstChar { it.lowercase() }}",
+                        style = body.copy(color = Palette.player(boat.player.colour)), maxLines = 1,
+                    )
+                }
+            }
         }
         Column(
             Modifier.fillMaxHeight().fillMaxWidth(0.48f).align(Alignment.TopEnd).padding(top = 64.dp, end = 64.dp, bottom = 56.dp),

@@ -26,9 +26,17 @@ sealed interface HostMessage {
     @SerialName("welcome")
     data class Welcome(val playerId: Int, val colour: Int) : HostMessage
 
+    /** [award] is this player's results award, such as "Pirate. Stole 2 lanterns by ramming.", or null. */
     @Serializable
     @SerialName("status")
-    data class Status(val phase: Phase, val score: Int, val place: Int, val secondsLeft: Int, val countdown: Int = 0) : HostMessage
+    data class Status(
+        val phase: Phase,
+        val score: Int,
+        val place: Int,
+        val secondsLeft: Int,
+        val countdown: Int = 0,
+        val award: String? = null,
+    ) : HostMessage
 
     /** A short phone vibration for something that just happened to this player. */
     @Serializable

@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.RaceSnapshot
@@ -59,6 +60,7 @@ fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
     var snapshot by remember { mutableStateOf<RaceSnapshot?>(null) }
     var players by remember { mutableStateOf(emptyList<Player>()) }
     var countdown by remember { mutableStateOf(0f) }
+    var awards by remember { mutableStateOf(emptyList<Award>()) }
     var time by remember { mutableStateOf(0f) }
     val fx = remember { RiverFx() }
     val held = remember { mutableSetOf<Key>() }
@@ -81,7 +83,10 @@ fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
             val live = host.snapshot()
             if (next == Phase.Countdown && phase != Phase.Countdown) fx.newRace()
             fx.onEvents(host.drainEvents()) // drained every frame so the host's buffer never grows
-            if (next == Phase.Results && phase != Phase.Results) live?.standings?.firstOrNull()?.let(fx::finish)
+            if (next == Phase.Results && phase != Phase.Results) {
+                live?.standings?.firstOrNull()?.let(fx::finish)
+                awards = host.awards()
+            }
             fx.noteArrivals(host.players)
             fx.step(dt, live.takeIf { next == Phase.Racing })
             phase = next
@@ -111,9 +116,9 @@ fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
         Crossfade(phase, animationSpec = tween(400)) { shown ->
             val current = snapshot
             when {
-                shown == Phase.Countdown -> CountdownScreen(players, countdown, fx, time)
+                shown == Phase.Countdown -> CountdownScreen(players, countdown, fx, time, host.raceNumber, host.river)
                 shown == Phase.Racing && current != null -> RaceScreen(current, fx, time)
-                shown == Phase.Results && current != null -> Results(current, fx, time)
+                shown == Phase.Results && current != null -> Results(current, fx, time, awards)
                 else -> Lobby(joinUrl, players, fx, time, offline) { url, modifier -> QrCode(url, modifier) }
             }
         }

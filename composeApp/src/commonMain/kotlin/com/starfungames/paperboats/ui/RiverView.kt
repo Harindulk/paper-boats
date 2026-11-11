@@ -3,12 +3,15 @@ package com.starfungames.paperboats.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
@@ -33,8 +36,10 @@ private const val VIEW_BEHIND = 0.35f
 private const val GO_SECONDS = 0.8f
 /** Boats are drawn larger than their hit circle so they read on a TV across the room. */
 private const val BOAT_DRAW_SCALE = 1.7f
+/** Logs are drawn a little thicker than their hit band, like the boats. */
+private const val LOG_DRAW_SCALE = 1.5f
 
-/** The big screen: the river, its lights and rocks, every boat, and the juice in [fx]. Shared by all platforms. */
+/** The big screen: the river, its lights, rocks, logs and whirlpools, every boat, and the juice in [fx]. Shared by all platforms. */
 @Composable
 fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier, time: Float = fx.time) {
     val text = rememberTextMeasurer()
@@ -48,6 +53,9 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
         drawRect(Palette.bank)
         drawRect(Palette.water, Offset(left + Race.BANK * unit, 0f), Size((1 - 2 * Race.BANK) * unit, size.height))
         drawRipples(left, unit, bottom)
+        clipRect(left + Race.BANK * unit, 0f, left + (1 - Race.BANK) * unit, size.height) {
+            snapshot.whirlpools.forEach { drawWhirlpool(toScreen(it.x, it.y), it.radius * unit, time) }
+        }
 
         fx.particles.live.filter { it.kind == Kind.Wake }.forEach {
             val fade = 1f - it.life / it.maxLife
@@ -60,11 +68,21 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             drawCircle(Palette.paper.copy(alpha = 0.4f), it.radius * unit * 1.12f, at, style = Stroke(width = it.radius * unit * 0.16f))
             drawCircle(Palette.rock, it.radius * unit, at)
         }
+        snapshot.logs.forEach {
+            val at = toScreen(it.x, it.y)
+            val half = Size(it.halfWidth * unit, Race.LOG_HALF_THICKNESS * unit * LOG_DRAW_SCALE)
+            val corner = CornerRadius(half.height)
+            drawRoundRect(Palette.logEdge, at - Offset(half.width, half.height), half * 2f, corner)
+            drawRoundRect(Palette.log, at - Offset(half.width, half.height), Size(half.width * 2f, half.height * 1.4f), corner)
+        }
+        // In the golden hour every lantern is worth 2, so they grow and take the richer amber.
+        val lantern = if (snapshot.goldenHour) Palette.gold else Palette.light
+        val lanternSize = if (snapshot.goldenHour) 1.35f else 1f
         snapshot.lights.forEach {
             val at = toScreen(it.x, it.y + sin(time * 2.6f + it.id * 1.9f) * 0.004f)
-            val r = Race.LIGHT_RADIUS * unit * (1f + 0.06f * sin(time * 3.1f + it.id))
-            drawCircle(Palette.light.copy(alpha = 0.16f), r * 2.6f, at)
-            drawCircle(Palette.light, r, at)
+            val r = Race.LIGHT_RADIUS * unit * lanternSize * (1f + 0.06f * sin(time * 3.1f + it.id))
+            drawCircle(lantern.copy(alpha = 0.16f), r * 2.6f, at)
+            drawCircle(lantern, r, at)
         }
         fx.particles.live.filter { it.kind == Kind.Splash }.forEach {
             drawCircle(Palette.paper.copy(alpha = 0.85f * (1f - it.life / it.maxLife)), it.size * unit, toScreen(it.x, it.y))
@@ -89,7 +107,14 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
         fx.pops.forEach {
             val t = (time - it.born) / RiverFx.POP_SECONDS
             val alpha = 1f - ((t - 0.45f) / 0.55f).coerceIn(0f, 1f)
-            drawWord(text, "+1", toScreen(it.x, it.y + 0.045f + 0.07f * Ease.outCubic(t)), 34.sp, Palette.light, 1f, alpha)
+            val gold = it.value > 1
+            drawWord(text, "+${it.value}", toScreen(it.x, it.y + 0.045f + 0.07f * Ease.outCubic(t)), if (gold) 44.sp else 34.sp, if (gold) Palette.gold else Palette.light, 1f, alpha)
+        }
+        fx.goldenBanner().takeIf { it > 0f }?.let { t ->
+            drawWord(
+                text, "Golden hour", Offset(center.x, size.height * 0.2f), 96.sp, Palette.gold, Ease.outBack(t / 0.2f),
+                1f - ((t - 0.7f) / 0.3f).coerceIn(0f, 1f), maxWidth = (1 - 2 * Race.BANK) * unit * 0.92f,
+            )
         }
         if (snapshot.elapsed > 0f && snapshot.elapsed < GO_SECONDS) {
             val t = snapshot.elapsed / GO_SECONDS
@@ -109,12 +134,32 @@ internal fun fxColour(code: Int): Color = when (code) {
 internal fun DrawScope.drawCallout(text: TextMeasurer, word: String, scale: Float, alpha: Float, colour: Color) =
     drawWord(text, word, center, 200.sp, colour, scale, alpha)
 
-internal fun DrawScope.drawWord(text: TextMeasurer, word: String, at: Offset, fontSize: TextUnit, colour: Color, scale: Float, alpha: Float) {
+/** Draws [word] centred on [at], shrunk to fit [maxWidth] when it is wider. */
+internal fun DrawScope.drawWord(
+    text: TextMeasurer, word: String, at: Offset, fontSize: TextUnit, colour: Color, scale: Float, alpha: Float, maxWidth: Float = Float.MAX_VALUE,
+) {
     if (alpha <= 0f || scale <= 0f) return
     val layout = text.measure(word, TextStyle(color = colour, fontSize = fontSize, fontWeight = FontWeight.Bold))
-    withTransform({ scale(scale, scale, at) }) {
+    val fit = scale * minOf(1f, maxWidth / layout.size.width)
+    withTransform({ scale(fit, fit, at) }) {
         drawText(layout, alpha = alpha.coerceIn(0f, 1f), topLeft = at - Offset(layout.size.width / 2f, layout.size.height / 2f))
     }
+}
+
+/** Two spiral arms in the light water colour, turning slowly so a whirlpool reads as moving water, not a hole. */
+private fun DrawScope.drawWhirlpool(at: Offset, radius: Float, time: Float) {
+    val turn = -time * 1.6f
+    for (arm in 0 until 2) {
+        val spiral = Path()
+        for (step in 0..40) {
+            val f = step / 40f
+            val angle = turn + arm * PI.toFloat() + f * 2.6f * PI.toFloat()
+            val point = at + Offset(cos(angle), sin(angle)) * (radius * (0.12f + 0.88f * f))
+            if (step == 0) spiral.moveTo(point.x, point.y) else spiral.lineTo(point.x, point.y)
+        }
+        drawPath(spiral, Palette.waterLight, style = Stroke(width = radius * 0.17f, cap = StrokeCap.Round))
+    }
+    drawCircle(Palette.night, radius * 0.16f, at)
 }
 
 private fun DrawScope.drawRipples(left: Float, unit: Float, bottom: Float) {

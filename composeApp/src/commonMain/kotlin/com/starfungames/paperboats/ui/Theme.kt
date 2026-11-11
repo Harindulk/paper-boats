@@ -9,6 +9,11 @@ object Palette {
     val bank = Color(0xFF0E2419)
     val rock = Color(0xFF07121A)
     val light = Color(0xFFFFC46B)
+    /** Golden-hour lanterns: a deeper, richer amber than [light]. */
+    val gold = Color(0xFFFFA62B)
+    /** Drifting logs: a kraft-paper plank with a darker underside. */
+    val log = Color(0xFFC8AE85)
+    val logEdge = Color(0xFF7E6748)
     val paper = Color(0xFFF4F1EA)
     val ink = Color(0xFFF2F5F4)
     val inkSoft = Color(0xFFA9BAC3)

@@ -2,12 +2,14 @@ package com.starfungames.paperboats.ui
 
 import com.starfungames.paperboats.game.BoatView
 import com.starfungames.paperboats.game.LightCollected
+import com.starfungames.paperboats.game.LogHit
 import com.starfungames.paperboats.game.Paddled
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
 import com.starfungames.paperboats.game.Rammed
 import com.starfungames.paperboats.game.RockHit
+import com.starfungames.paperboats.game.WhirlpoolEntered
 import com.starfungames.paperboats.ui.fx.Camera
 import com.starfungames.paperboats.ui.fx.Particles
 import com.starfungames.paperboats.ui.fx.Particles.Kind
@@ -16,11 +18,12 @@ import kotlin.random.Random
 /**
  * The big screen's juice, kept apart from the race: particles, camera, "+1" pops, paddle squash,
  * lobby arrivals and the lantern finish. Pure and seeded, so it is tested without a window.
- * Tiers: a light is small (sparks, no shake), a rock is medium (splash and shake), the win is large.
+ * Tiers: a light is small (sparks, no shake; a gold one a little bigger), a whirlpool is a small swirl,
+ * a rock, log or ram is medium (splash and shake), the win is large.
  */
 class RiverFx(seed: Long = 7) {
-    /** A "+1" rising from a collected light, in race units. */
-    data class Pop(val x: Float, val y: Float, val born: Float)
+    /** A "+1" (or "+2" in the golden hour) rising from a collected light, in race units. */
+    data class Pop(val x: Float, val y: Float, val born: Float, val value: Int = 1)
 
     private val random = Random(seed)
     private val paddledAt = mutableMapOf<Int, Float>()
@@ -32,6 +35,7 @@ class RiverFx(seed: Long = 7) {
     private var nextLantern = 0f
     private var lanternGap = 0.15f
     private var confettiUntil = 0f
+    private var goldenAt: Float? = null
 
     var time = 0f
         private set
@@ -53,15 +57,17 @@ class RiverFx(seed: Long = 7) {
         wakeDue.clear()
         lanternsLeft = 0
         confettiUntil = 0f
+        goldenAt = null
     }
 
     fun onEvents(events: List<RaceEvent>) = events.forEach { event ->
         when (event) {
             is LightCollected -> {
-                particles.emit(Kind.Spark, event.x, event.y, LIGHT_COLOUR, 14, random)
-                pending += Pop(event.x, event.y, time)
+                particles.emit(Kind.Spark, event.x, event.y, LIGHT_COLOUR, if (event.value > 1) 22 else 14, random)
+                pending += Pop(event.x, event.y, time, event.value)
             }
-            is RockHit -> {
+            is WhirlpoolEntered -> particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 6, random)
+            is RockHit, is LogHit -> {
                 particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 18, random)
                 camera.addTrauma(ROCK_TRAUMA)
             }
@@ -81,6 +87,7 @@ class RiverFx(seed: Long = 7) {
     fun step(dt: Float, snapshot: RaceSnapshot?) {
         time += dt
         snapshot?.let { race ->
+            if (race.goldenHour && race.timeLeft > 0f && goldenAt == null) goldenAt = time
             race.boats.maxOfOrNull { it.y }?.let { camera.follow(it, dt) }
             race.boats.forEach { boat ->
                 val due = wakeDue.getOrPut(boat.player.id) { time }
@@ -125,6 +132,12 @@ class RiverFx(seed: Long = 7) {
     /** Seconds since [playerId] joined; large when unknown so it draws at rest. */
     fun arrival(playerId: Int): Float = arrivedAt[playerId]?.let { time - it } ?: 60f
 
+    /** How far through its one showing the "Golden hour" banner is, in (0, 1); 0 when it is not on screen. */
+    fun goldenBanner(): Float {
+        val t = (time - (goldenAt ?: return 0f)) / GOLDEN_BANNER_SECONDS
+        return if (t < 1f) t.coerceAtLeast(0.001f) else 0f
+    }
+
     /** Paddle squash for a boat: 1 the moment it paddles, back to 0 after [SQUASH_SECONDS]. */
     fun squash(playerId: Int): Float = paddledAt[playerId]?.let { (1f - (time - it) / SQUASH_SECONDS).coerceIn(0f, 1f) } ?: 0f
 
@@ -137,6 +150,7 @@ class RiverFx(seed: Long = 7) {
         const val FINISH_Y = 0.24f
         const val POP_SECONDS = 0.9f
         const val SQUASH_SECONDS = 0.12f
+        const val GOLDEN_BANNER_SECONDS = 1.6f
         private const val ROCK_TRAUMA = 0.6f
         private const val WAKE_EVERY = 0.05f
         private const val STERN = 0.03f

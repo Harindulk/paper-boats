@@ -1,6 +1,8 @@
 package com.starfungames.paperboats.party
 
+import com.starfungames.paperboats.game.Paddled
 import com.starfungames.paperboats.game.PlayerInput
+import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.protocol.BuzzKind
 import com.starfungames.paperboats.protocol.ControllerMessage
 import com.starfungames.paperboats.protocol.HostMessage
@@ -163,5 +165,80 @@ class PartySessionTest {
     @Test
     fun steeringFromAControllerIsClamped() {
         assertEquals(PlayerInput(1f, false), ControllerMessage.Input(steer = 7f, paddle = false).toPlayerInput())
+    }
+    @Test
+    fun riversRotateEveryRace() {
+        val party = PartySession(roundSeconds = 0.5f)
+        party.join("Ana")
+        val seen = List(4) {
+            party.start()
+            val announced = party.river to party.raceNumber
+            party.tick(PartySession.COUNTDOWN_SECONDS)
+            assertEquals(announced.first, party.snapshot()!!.river, "the countdown announces the river that is raced")
+            repeat(40) { party.tick(1f / 60f) }
+            announced
+        }
+        assertEquals(listOf(River.LanternCreek to 1, River.LogjamBend to 2, River.WhirlpoolNarrows to 3, River.LanternCreek to 4), seen)
+    }
+
+    /** Ana sweeps the creek on seed 9, the route that hits rocks and picks up lanterns. */
+    private fun sweptRace(drainEachTick: Boolean): Pair<PartySession, Int> {
+        val party = PartySession(roundSeconds = 20f) { 9L }
+        val ana = party.join("Ana")!!
+        party.start()
+        party.tick(PartySession.COUNTDOWN_SECONDS)
+        var t = 0f
+        while (party.phase == Phase.Racing) {
+            party.input(ana.id, PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f))
+            party.tick(1f / 60f)
+            if (drainEachTick) party.drainEvents()
+            t += 1f / 60f
+        }
+        return party to ana.id
+    }
+
+    @Test
+    fun awardsSurviveTheHostDrainingEvents() {
+        val (drained, id) = sweptRace(drainEachTick = true)
+        val (kept, _) = sweptRace(drainEachTick = false)
+        assertEquals(Phase.Results, drained.phase)
+        assertTrue(drained.awards().isNotEmpty(), "Ana hit rocks, so she should be the shipwreck")
+        assertEquals(kept.awards(), drained.awards())
+        val award = drained.awards().single()
+        assertEquals("${award.title}. ${award.line}.", drained.statusFor(id).award)
+    }
+
+    @Test
+    fun awardsAreOnlyForTheResultsAndStartFreshEachRace() {
+        val (party, id) = sweptRace(drainEachTick = true)
+        party.start()
+        assertTrue(party.awards().isEmpty())
+        assertNull(party.statusFor(id).award)
+        party.tick(PartySession.COUNTDOWN_SECONDS)
+        assertTrue(party.awards().isEmpty())
+    }
+
+    @Test
+    fun hostStillGetsEveryEventExactlyOnce() {
+        val party = PartySession()
+        val ana = party.join("Ana")!!
+        party.start()
+        party.tick(PartySession.COUNTDOWN_SECONDS)
+        var paddles = 0
+        repeat(30) {
+            party.input(ana.id, PlayerInput(paddle = it % 2 == 0))
+            party.tick(1f / 60f)
+            if (it % 3 == 0) paddles += party.drainEvents().count { e -> e is Paddled }
+        }
+        paddles += party.drainEvents().count { it is Paddled }
+        assertEquals(15, paddles)
+    }
+
+    @Test
+    fun oldStatusJsonStillDecodes() {
+        val old = """{"type":"status","phase":"Results","score":3,"place":1,"secondsLeft":0}"""
+        assertEquals(HostMessage.Status(Phase.Results, 3, 1, 0), ProtocolJson.decodeFromString(HostMessage.serializer(), old))
+        val withAward: HostMessage = HostMessage.Status(Phase.Results, 3, 1, 0, award = "Pirate. Stole 2 lanterns by ramming.")
+        assertEquals(withAward, ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), withAward)))
     }
 }

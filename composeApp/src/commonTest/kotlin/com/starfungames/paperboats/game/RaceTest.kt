@@ -209,4 +209,118 @@ class RaceTest {
         val gaps = xs.zipWithNext { a, b -> b - a }
         assertTrue(gaps.all { abs(it - gaps.first()) < 1e-5f })
     }
+    @Test
+    fun lanternCreekIsTheDefaultRiverAndPlaysExactlyAsBefore() {
+        val race = Race(players, seed = 9)
+        var t = 0f
+        while (t < 20f) {
+            race.step(1f / 60f, mapOf(1 to PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f, paddle = (t * 2).toInt() % 3 == 0)))
+            t += 1f / 60f
+        }
+        val s = race.snapshot()
+        assertEquals(River.LanternCreek, s.river)
+        assertTrue(s.logs.isEmpty() && s.whirlpools.isEmpty())
+        // Pinned from the river before rivers existed: same seed, same inputs, same course and scores.
+        assertEquals(
+            "[0.7166398,4.7585945,9, 0.72917503,4.771361,3] 33 [Rock(x=0.59854704, y=4.095461, radius=0.060536392), " +
+                "Rock(x=0.8743268, y=4.707791, radius=0.052653186), Rock(x=0.25122386, y=5.0425787, radius=0.043933935), " +
+                "Rock(x=0.7361244, y=6.967539, radius=0.045838855)]",
+            "${s.boats.map { "${it.x},${it.y},${it.score}" }} ${s.lights.size} ${s.rocks}",
+        )
+    }
+
+    @Test
+    fun logjamBendHasLogsAndFewerRocks() {
+        val seeds = 1L..20L
+        val creekRocks = seeds.sumOf { Race(players, it).snapshot().rocks.size }
+        val logjamRocks = seeds.sumOf { Race(players, it, river = River.LogjamBend).snapshot().rocks.size }
+        assertTrue(logjamRocks < creekRocks, "logjam $logjamRocks rocks vs creek $creekRocks")
+        val logs = seeds.sumOf { Race(players, it, river = River.LogjamBend).snapshot().logs.size }
+        assertTrue(logs > seeds.count(), "about one log per stretch of river: $logs logs in 20 courses")
+        assertEquals(0, seeds.sumOf { Race(players, it).snapshot().logs.size }, "no logs on the creek")
+    }
+
+    @Test
+    fun logsDriftAcrossAndStayBetweenTheBanks() {
+        val race = Race(players, seed = 3, river = River.LogjamBend)
+        val before = race.snapshot().logs
+        play(race, 0.5f) { emptyMap() }
+        before.zip(race.snapshot().logs).forEach { (a, b) ->
+            assertEquals(a.y, b.y, "logs drift across, not along")
+            assertTrue(a.x != b.x, "log at y=${a.y} did not move")
+        }
+        repeat(20) {
+            play(race, 1f) { emptyMap() }
+            race.snapshot().logs.forEach { assertTrue(it.x - it.halfWidth >= Race.BANK - 1e-4f && it.x + it.halfWidth <= 1f - Race.BANK + 1e-4f, "log off the river: $it") }
+        }
+    }
+
+    /** Steers one boat at the nearest thing ahead returned by [target] until an event of type [E] arrives. */
+    private inline fun <reified E : RaceEvent> steerInto(race: Race, target: (RaceSnapshot, BoatView) -> Float?): Pair<E, RaceSnapshot>? {
+        var t = 0f
+        while (t < 40f) {
+            val s = race.snapshot()
+            val boat = s.boats.single()
+            val x = target(s, boat)
+            race.step(1f / 60f, mapOf(boat.player.id to PlayerInput(steer = if (x == null) 0f else ((x - boat.x) * 20f).coerceIn(-1f, 1f))))
+            race.drainEvents().filterIsInstance<E>().firstOrNull()?.let { return it to race.snapshot() }
+            t += 1f / 60f
+        }
+        return null
+    }
+
+    @Test
+    fun touchingALogStunsLikeARock() {
+        val race = Race(listOf(players.first()), seed = 3, river = River.LogjamBend)
+        val (hit, after) = assertNotNull(steerInto<LogHit>(race) { s, b -> s.logs.filter { it.y > b.y }.minByOrNull { it.y }?.x }, "never reached a log")
+        assertEquals(1, hit.playerId)
+        assertTrue(after.boats.single().stunned)
+        var again = 0
+        repeat(30) {
+            race.step(1f / 60f, emptyMap())
+            again += race.drainEvents().count { it is LogHit }
+        }
+        assertEquals(0, again, "one bump, one LogHit")
+    }
+
+    @Test
+    fun whirlpoolsPullTowardTheirCentreAndSlowYouWithoutStunning() {
+        val race = Race(listOf(players.first()), seed = 3, river = River.WhirlpoolNarrows)
+        assertTrue(race.snapshot().whirlpools.isNotEmpty())
+        // Aim a little to one side of the centre so the pull has somewhere to go.
+        val (entered, inside) = assertNotNull(
+            steerInto<WhirlpoolEntered>(race) { s, b -> s.whirlpools.filter { it.y > b.y }.minByOrNull { it.y }?.let { it.x + it.radius * 0.6f } },
+            "never reached a whirlpool",
+        )
+        assertEquals(1, entered.playerId)
+        val boat = inside.boats.single()
+        val pool = inside.whirlpools.first { hypot(it.x - boat.x, it.y - boat.y) < it.radius }
+        assertTrue(!boat.stunned)
+        play(race, 0.25f) { emptyMap() }
+        val later = race.snapshot().boats.single()
+        assertTrue(abs(later.x - pool.x) < abs(boat.x - pool.x), "pulled toward the centre: ${boat.x} -> ${later.x}, centre ${pool.x}")
+        assertTrue(later.y - boat.y < 0.18f * 0.25f * 0.8f, "slowed: moved ${later.y - boat.y}")
+        assertEquals(0, race.drainEvents().count { it is WhirlpoolEntered }, "one event per visit")
+    }
+
+    @Test
+    fun lanternsInTheLastTenSecondsAreWorthTwo() {
+        val race = Race(listOf(players.first()), seed = 9, length = 16f)
+        val values = mutableListOf<Pair<Float, Int>>()
+        var t = 0f
+        while (!race.finished) {
+            race.step(1f / 60f, mapOf(1 to PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f)))
+            race.drainEvents().filterIsInstance<LightCollected>().forEach { values += race.snapshot().timeLeft to it.value }
+            t += 1f / 60f
+        }
+        assertTrue(values.any { it.second == 1 } && values.any { it.second == 2 }, "test setup: lanterns on both sides of the golden hour: $values")
+        values.forEach { (left, value) -> assertEquals(if (left <= Race.GOLDEN_HOUR_SECONDS) 2 else 1, value, "at $left s left") }
+        assertEquals(values.sumOf { it.second }, race.snapshot().boats.single().score)
+    }
+
+    @Test
+    fun snapshotKnowsWhenGoldenHourBegins() {
+        assertTrue(!RaceSnapshot(49.9f, 60f, emptyList(), emptyList(), emptyList()).goldenHour)
+        assertTrue(RaceSnapshot(50f, 60f, emptyList(), emptyList(), emptyList()).goldenHour)
+    }
 }

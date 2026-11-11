@@ -10,13 +10,21 @@ sealed interface RaceEvent {
     val y: Float
 }
 
-/** A boat picked up the lantern at ([x], [y]). */
+/** A boat picked up the lantern at ([x], [y]), scoring [value]: 2 in the golden hour, 1 before it. */
 @Serializable
-data class LightCollected(override val playerId: Int, override val x: Float, override val y: Float) : RaceEvent
+data class LightCollected(override val playerId: Int, override val x: Float, override val y: Float, val value: Int = 1) : RaceEvent
 
 /** A boat bumped a rock and is stunned. */
 @Serializable
 data class RockHit(override val playerId: Int, override val x: Float, override val y: Float) : RaceEvent
+
+/** A boat bumped a drifting log and is stunned, just like a rock. */
+@Serializable
+data class LogHit(override val playerId: Int, override val x: Float, override val y: Float) : RaceEvent
+
+/** A boat drifted into a whirlpool, which pulls it toward the centre and slows it while it stays inside. */
+@Serializable
+data class WhirlpoolEntered(override val playerId: Int, override val x: Float, override val y: Float) : RaceEvent
 
 /** A player pressed paddle and the boat surged. */
 @Serializable

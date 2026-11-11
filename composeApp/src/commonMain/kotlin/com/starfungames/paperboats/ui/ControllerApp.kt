@@ -166,6 +166,11 @@ internal fun RaceResults(colour: Int, status: HostMessage.Status) {
             style = Huge.copy(color = Palette.night),
         )
         BasicText("with ${lanterns(status.score)}", style = Body.copy(color = Palette.night))
+        status.award?.let { award ->
+            // The host sends "Title. Line."; the title gets the big type.
+            BasicText(award.substringBefore(". "), Modifier.padding(top = 32.dp), style = Huge.copy(color = Palette.night, fontSize = 48.sp, letterSpacing = 0.sp))
+            BasicText(award.substringAfter(". ", ""), style = Body.copy(color = Palette.night))
+        }
         BasicText("Wait for the next race", Modifier.padding(top = 48.dp), style = Body.copy(color = Palette.night.copy(alpha = 0.7f)))
     }
 }

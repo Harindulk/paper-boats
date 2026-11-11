@@ -2,6 +2,8 @@ package com.starfungames.paperboats.ui
 
 import com.starfungames.paperboats.game.BoatView
 import com.starfungames.paperboats.game.LightCollected
+import com.starfungames.paperboats.game.LogHit
+import com.starfungames.paperboats.game.WhirlpoolEntered
 import com.starfungames.paperboats.game.Paddled
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.RaceSnapshot
@@ -107,5 +109,44 @@ class RiverFxTest {
         fx.noteArrivals(listOf(ana, ben))
         assertEquals(0.5f, fx.arrival(ana.id), 0.02f)
         assertEquals(0f, fx.arrival(ben.id))
+    }
+    @Test
+    fun aGoldLanternPopsPlusTwoWithMoreSparks() {
+        val plain = RiverFx().apply { onEvents(listOf(LightCollected(1, 0.4f, 3f))) }
+        val gold = RiverFx().apply { onEvents(listOf(LightCollected(1, 0.4f, 3f, value = 2))) }
+        assertEquals(2, gold.pops.single().value)
+        assertEquals(1, plain.pops.single().value)
+        assertTrue(gold.particles.live.size > plain.particles.live.size)
+    }
+
+    @Test
+    fun logHitSplashesAndShakesLikeARock() {
+        val fx = RiverFx()
+        fx.onEvents(listOf(LogHit(1, 0.5f, 2f)))
+        assertTrue(fx.camera.trauma >= 0.35f)
+        assertTrue(fx.particles.live.any { it.kind == Kind.Splash })
+    }
+
+    @Test
+    fun enteringAWhirlpoolIsASmallSwirlWithoutShake() {
+        val fx = RiverFx()
+        fx.onEvents(listOf(WhirlpoolEntered(1, 0.5f, 2f)))
+        assertEquals(0f, fx.camera.trauma)
+        assertTrue(fx.particles.live.count { it.kind == Kind.Splash } in 1..10, "smaller than a rock splash")
+    }
+
+    @Test
+    fun goldenHourBannerPopsOnceThenRests() {
+        val fx = RiverFx()
+        fx.run(0.5f, snapshot())
+        assertEquals(0f, fx.goldenBanner())
+        val golden = snapshot().copy(elapsed = 50.2f)
+        fx.step(1f / 60f, golden)
+        assertTrue(fx.goldenBanner() > 0f)
+        fx.run(3f, golden)
+        assertEquals(0f, fx.goldenBanner(), "the banner leaves and does not come back while golden hour lasts")
+        fx.newRace()
+        fx.step(1f / 60f, golden)
+        assertTrue(fx.goldenBanner() > 0f, "a new race gets its own banner")
     }
 }

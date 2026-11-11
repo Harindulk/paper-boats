@@ -6,10 +6,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.ImageComposeScene
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.use
+import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.LightCollected
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.Race
+import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.ui.ControllerPad
 import com.starfungames.paperboats.ui.CountdownScreen
 import com.starfungames.paperboats.ui.Lobby
@@ -61,10 +63,32 @@ class RenderTest {
         save("host.png", 1280, 800) { RaceScreen(snapshot, fx, fx.time) }
     }
 
+    /** Runs a four-boat race on [river] for [seconds] with juice, and saves the frame. */
+    private fun raceFrame(name: String, river: River, seconds: Float, length: Float = Race.DEFAULT_LENGTH_SECONDS) {
+        val players = players("Ana", "Ben", "Chen", "Dilan")
+        val race = Race(players, seed = 2026, length = length, river = river)
+        val fx = RiverFx()
+        var t = 0f
+        while (t < seconds) {
+            race.step(dt, inputs(players, t))
+            fx.onEvents(race.drainEvents())
+            fx.step(dt, race.snapshot())
+            t += dt
+        }
+        val snapshot = race.snapshot()
+        save(name, 1280, 800) { RaceScreen(snapshot, fx, fx.time) }
+    }
+
+    @Test
+    fun everyRiverMidRace() = River.entries.forEach { raceFrame("river-${it.name}.png", it, 9f) }
+
+    @Test
+    fun goldenHourBannerAndGoldLanterns() = raceFrame("golden-hour.png", River.LanternCreek, 10.35f, length = 20f)
+
     @Test
     fun countdownPopsOnTheRiver() {
         val fx = RiverFx().apply { step(0.5f, null) }
-        save("countdown.png", 1280, 800) { CountdownScreen(players("Ana", "Ben", "Chen"), 2.85f, fx, fx.time) }
+        save("countdown.png", 1280, 800) { CountdownScreen(players("Ana", "Ben", "Chen"), 2.85f, fx, fx.time, raceNumber = 3, river = River.WhirlpoolNarrows) }
     }
 
     @Test
@@ -101,5 +125,13 @@ class RenderTest {
         fx.finish(snapshot.standings.first())
         repeat(84) { fx.step(dt, null) }
         save("results.png", 1280, 800) { Results(snapshot, fx, fx.time) }
+        // Long enough for the awards to land after the standings.
+        repeat(150) { fx.step(dt, null) }
+        val awards = listOf(
+            Award(3, "Pirate", "Stole 3 lanterns by ramming"),
+            Award(1, "Shipwreck", "Bumped 6 times"),
+            Award(2, "Golden hour", "Scored 8 in the last 10 seconds"),
+        )
+        save("results-awards.png", 1280, 800) { Results(snapshot, fx, fx.time, awards) }
     }
 }

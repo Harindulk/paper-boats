@@ -1,10 +1,13 @@
 package com.starfungames.paperboats
 
+import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.LightCollected
+import com.starfungames.paperboats.game.LogHit
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
+import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.game.Rammed
 import com.starfungames.paperboats.game.RockHit
 import com.starfungames.paperboats.party.PartySession
@@ -51,6 +54,9 @@ class PartyHost(roundSeconds: Float = 60f) {
     val phase: Phase get() = synchronized(party) { party.phase }
     val countdownLeft: Float get() = synchronized(party) { party.countdownLeft }
     val players: List<Player> get() = synchronized(party) { party.players }
+    val river: River get() = synchronized(party) { party.river }
+    val raceNumber: Int get() = synchronized(party) { party.raceNumber }
+    fun awards(): List<Award> = synchronized(party) { party.awards() }
     fun snapshot(): RaceSnapshot? = synchronized(party) { party.snapshot() }
     fun canStart(): Boolean = synchronized(party) { party.canStart() }
     fun start() = synchronized(party) { party.start() }
@@ -68,7 +74,8 @@ class PartyHost(roundSeconds: Float = 60f) {
         screenEvents += events
         for (event in events) when (event) {
             is LightCollected -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Light))
-            is RockHit, is Rammed -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
+            // A whirlpool only drags, so it gets no buzz: the phone buzzes for lanterns and for bumps that stun.
+            is RockHit, is LogHit, is Rammed -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
             else -> Unit
         }
         // start() and leave() can change the phase too, so compare with what the phones last heard.
