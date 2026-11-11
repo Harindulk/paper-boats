@@ -59,7 +59,9 @@ fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Floa
                 val since = number - countdown
                 Canvas(Modifier.fillMaxSize()) {
                     val riverWidth = minOf(size.width, size.height * 0.8f) * (1 - 2 * Race.BANK)
-                    if (heading != null) drawWord(text, heading, Offset(center.x, size.height * 0.2f), 56.sp, Palette.paper, 1f, 1f, riverWidth * 0.9f)
+                    if (heading != null) {
+                        drawWord(text, heading, Offset(center.x, size.height * 0.2f), 56.sp, Palette.paper, 1f, 1f, riverWidth * 0.9f)
+                    }
                     drawCallout(text, "$number", Ease.outBack(since / 0.4f), 1f, Palette.paper)
                 }
             }
@@ -70,17 +72,32 @@ fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Floa
 
 /** The countdown on the river: every boat on its starting lane, the course still dark, the race's name and a big number per second. */
 @Composable
-fun CountdownScreen(players: List<Player>, countdown: Float, fx: RiverFx, time: Float, raceNumber: Int = 1, river: River = River.LanternCreek) {
+fun CountdownScreen(
+    players: List<Player>,
+    countdown: Float,
+    fx: RiverFx,
+    time: Float,
+    raceNumber: Int = 1,
+    river: River = River.LanternCreek,
+) {
     if (players.isEmpty()) return
     val preview = remember(players, river) {
-        Race(players, seed = 0, river = river).snapshot().copy(lights = emptyList(), rocks = emptyList(), logs = emptyList(), whirlpools = emptyList())
+        val start = Race(players, seed = 0, river = river).snapshot()
+        start.copy(lights = emptyList(), rocks = emptyList(), logs = emptyList(), whirlpools = emptyList())
     }
     RaceScreen(preview, fx, time, countdown, "Race $raceNumber: ${river.title}")
 }
 
 /** The lobby: the QR large on the right, and a strip of river where each joining boat drops in with a pop. */
 @Composable
-fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, offline: String = NO_WIFI, qr: @Composable (String, Modifier) -> Unit) {
+fun Lobby(
+    joinUrl: String?,
+    players: List<Player>,
+    fx: RiverFx,
+    time: Float,
+    offline: String = NO_WIFI,
+    qr: @Composable (String, Modifier) -> Unit,
+) {
     val text = rememberTextMeasurer()
     Row(Modifier.fillMaxSize().padding(64.dp), horizontalArrangement = Arrangement.spacedBy(64.dp)) {
         Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -97,15 +114,24 @@ fun Lobby(joinUrl: String?, players: List<Player>, fx: RiverFx, time: Float, off
                     val x = size.width * (i + 0.5f) / maxOf(players.size, 4)
                     val waterline = size.height * 0.6f + sin(time * 4f + player.id * 2.1f) * r * 0.06f
                     drawBoat(
-                        Offset(x, waterline - (1f - drop) * size.height * 0.6f), r, Palette.player(player.colour),
-                        degrees = sin(time * 2.4f + player.id) * 4f, scaleX = pop, scaleY = 2f - pop,
+                        Offset(x, waterline - (1f - drop) * size.height * 0.6f),
+                        r,
+                        Palette.player(player.colour),
+                        degrees = sin(time * 2.4f + player.id) * 4f,
+                        scaleX = pop,
+                        scaleY = 2f - pop,
                     )
                     drawWord(text, player.name, Offset(x, size.height * 0.88f), 22.sp, Palette.ink, 1f, drop)
                 }
             }
-            BasicText(if (players.isEmpty()) "Nobody on the water yet. No phones? Press K to add a keyboard player." else "No phones? Press K to add a keyboard player.", style = soft)
+            val hint = "No phones? Press K to add a keyboard player."
+            BasicText(if (players.isEmpty()) "Nobody on the water yet. $hint" else hint, style = soft)
         }
-        Column(Modifier.fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically)) {
+        Column(
+            Modifier.fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
+        ) {
             if (joinUrl != null) {
                 qr(joinUrl, Modifier.size(380.dp))
                 BasicText(joinUrl, style = body)
@@ -131,21 +157,34 @@ fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float, awards: List<Award
             val r = size.height * 0.075f
             val land = Ease.outBack(age / 0.6f)
             drawBoat(
-                Offset(size.width * RiverFx.FINISH_X, waterTop + sin(time * 3.4f) * r * 0.08f), r * land, Palette.player(winner.player.colour),
+                Offset(size.width * RiverFx.FINISH_X, waterTop + sin(time * 3.4f) * r * 0.08f),
+                r * land,
+                Palette.player(winner.player.colour),
                 degrees = sin(time * 2.1f) * 5f,
             )
             drawSkyParticles(fx)
         }
         // Awards sit in the sky above the winner and arrive after the standings, one by one.
-        Column(Modifier.align(Alignment.TopStart).fillMaxWidth(0.46f).padding(start = 64.dp, top = 72.dp), verticalArrangement = Arrangement.spacedBy(28.dp)) {
+        Column(
+            Modifier.align(Alignment.TopStart).fillMaxWidth(0.46f).padding(start = 64.dp, top = 72.dp),
+            verticalArrangement = Arrangement.spacedBy(28.dp),
+        ) {
             awards.forEachIndexed { i, award ->
                 val boat = standings.firstOrNull { it.player.id == award.playerId } ?: return@forEachIndexed
                 val t = Ease.outBack((age - 1.1f - i * 0.25f) / 0.45f)
-                Column(Modifier.graphicsLayer { alpha = t.coerceIn(0f, 1f); scaleX = t; scaleY = t; transformOrigin = TransformOrigin(0f, 0.5f) }) {
+                Column(
+                    Modifier.graphicsLayer {
+                        alpha = t.coerceIn(0f, 1f)
+                        scaleX = t
+                        scaleY = t
+                        transformOrigin = TransformOrigin(0f, 0.5f)
+                    },
+                ) {
                     BasicText(award.title, style = awardTitle)
                     BasicText(
                         "${boat.player.name} ${award.line.replaceFirstChar { it.lowercase() }}",
-                        style = body.copy(color = Palette.player(boat.player.colour)), maxLines = 1,
+                        style = body.copy(color = Palette.player(boat.player.colour)),
+                        maxLines = 1,
                     )
                 }
             }
@@ -154,14 +193,19 @@ fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float, awards: List<Award
             Modifier.fillMaxHeight().fillMaxWidth(0.48f).align(Alignment.TopEnd).padding(top = 64.dp, end = 64.dp, bottom = 56.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            BasicText(if (tied.size > 1) tied.joinToString(" and ") { it.player.name } + " tie" else "${winner.player.name} wins", style = title)
+            val headline = if (tied.size > 1) tied.joinToString(" and ") { it.player.name } + " tie" else "${winner.player.name} wins"
+            BasicText(headline, style = title)
             BasicText(lightsLine(winner.score, tied.size > 1, winner.player.name), style = body)
             Spacer(Modifier.height(12.dp))
             standings.forEachIndexed { place, boat ->
                 val t = Ease.outCubic((age - 0.4f - place * 0.07f) / 0.4f)
                 Row(
-                    Modifier.graphicsLayer { alpha = t; translationX = (1f - t) * 80f },
-                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    Modifier.graphicsLayer {
+                        alpha = t
+                        translationX = (1f - t) * 80f
+                    },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     BasicText("${place + 1}", Modifier.width(26.dp), style = soft)
                     Box(Modifier.size(18.dp).background(Palette.player(boat.player.colour), CircleShape))

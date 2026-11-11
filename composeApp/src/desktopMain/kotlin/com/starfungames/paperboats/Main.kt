@@ -42,12 +42,18 @@ import com.starfungames.paperboats.ui.RiverFx
 fun main() = application {
     val host = remember { PartyHost() }
     // Ktor binds in the background, so probe the port first to catch a second copy of the host.
-    val server = remember { runCatching { java.net.ServerSocket(DEFAULT_PORT).close(); startHostServer(host) }.getOrNull() }
+    val server = remember {
+        runCatching {
+            java.net.ServerSocket(DEFAULT_PORT).close()
+            startHostServer(host)
+        }.getOrNull()
+    }
     val joinUrl = remember { lanAddress()?.let { "http://$it:$DEFAULT_PORT/" } }
     DisposableEffect(Unit) { onDispose { server?.stop(500, 1000) } }
 
     Window(onCloseRequest = ::exitApplication, title = "Paper Boats", state = rememberWindowState(width = 1280.dp, height = 800.dp)) {
-        PartyScreen(host, if (server != null) joinUrl else null, if (server == null) "Port $DEFAULT_PORT is busy. Close the other Paper Boats window and start again." else NO_WIFI)
+        val busy = "Port $DEFAULT_PORT is busy. Close the other Paper Boats window and start again."
+        PartyScreen(host, if (server != null) joinUrl else null, if (server == null) busy else NO_WIFI)
     }
 }
 
@@ -104,10 +110,12 @@ fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
                     held += event.key
                     when {
                         event.key == Key.Spacebar && host.canStart() -> host.start()
+
                         event.key == Key.K && host.phase == Phase.Lobby && keyboardPlayers.size < keyboardKeys.size ->
                             host.join(if (keyboardPlayers.isEmpty()) "Keys A D W" else "Arrow keys")?.let { keyboardPlayers += it.id }
                     }
                 }
+
                 KeyEventType.KeyUp -> held -= event.key
             }
             true

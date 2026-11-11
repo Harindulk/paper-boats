@@ -34,8 +34,10 @@ import kotlin.math.sin
 private const val VIEW_SPAN = 1.4f
 private const val VIEW_BEHIND = 0.35f
 private const val GO_SECONDS = 0.8f
+
 /** Boats are drawn larger than their hit circle so they read on a TV across the room. */
 private const val BOAT_DRAW_SCALE = 1.7f
+
 /** Logs are drawn a little thicker than their hit band, like the boats. */
 private const val LOG_DRAW_SCALE = 1.5f
 
@@ -94,12 +96,23 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             val wobble = if (boat.stunned) sin(time * 22f) * 14f else 0f
             val squash = fx.squash(id)
             drawBoat(
-                toScreen(boat.x, boat.y + bob), Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE, Palette.player(boat.player.colour),
-                degrees = roll + boat.lean * 14f + wobble, scaleX = 1f + 0.22f * squash, scaleY = 1f - 0.18f * squash,
+                toScreen(boat.x, boat.y + bob),
+                Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE,
+                Palette.player(boat.player.colour),
+                degrees = roll + boat.lean * 14f + wobble,
+                scaleX = 1f + 0.22f * squash,
+                scaleY = 1f - 0.18f * squash,
             )
             // Name under the hull so everyone on the sofa can find their own boat.
-            drawWord(text, boat.player.name, toScreen(boat.x, boat.y) + Offset(0f, Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE * 1.6f),
-                24.sp, Palette.player(boat.player.colour), 1f, 0.95f)
+            drawWord(
+                text,
+                boat.player.name,
+                toScreen(boat.x, boat.y) + Offset(0f, Race.BOAT_RADIUS * unit * BOAT_DRAW_SCALE * 1.6f),
+                24.sp,
+                Palette.player(boat.player.colour),
+                1f,
+                0.95f,
+            )
         }
         fx.particles.live.filter { it.kind == Kind.Spark }.forEach {
             drawCircle(fxColour(it.colour).copy(alpha = 1f - it.life / it.maxLife), it.size * unit * 1.8f, toScreen(it.x, it.y))
@@ -108,12 +121,26 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
             val t = (time - it.born) / RiverFx.POP_SECONDS
             val alpha = 1f - ((t - 0.45f) / 0.55f).coerceIn(0f, 1f)
             val gold = it.value > 1
-            drawWord(text, "+${it.value}", toScreen(it.x, it.y + 0.045f + 0.07f * Ease.outCubic(t)), if (gold) 44.sp else 34.sp, if (gold) Palette.gold else Palette.light, 1f, alpha)
+            drawWord(
+                text,
+                "+${it.value}",
+                toScreen(it.x, it.y + 0.045f + 0.07f * Ease.outCubic(t)),
+                if (gold) 44.sp else 34.sp,
+                if (gold) Palette.gold else Palette.light,
+                1f,
+                alpha,
+            )
         }
         fx.goldenBanner().takeIf { it > 0f }?.let { t ->
             drawWord(
-                text, "Golden hour", Offset(center.x, size.height * 0.2f), 96.sp, Palette.gold, Ease.outBack(t / 0.2f),
-                1f - ((t - 0.7f) / 0.3f).coerceIn(0f, 1f), maxWidth = (1 - 2 * Race.BANK) * unit * 0.92f,
+                text,
+                "Golden hour",
+                Offset(center.x, size.height * 0.2f),
+                96.sp,
+                Palette.gold,
+                Ease.outBack(t / 0.2f),
+                1f - ((t - 0.7f) / 0.3f).coerceIn(0f, 1f),
+                maxWidth = (1 - 2 * Race.BANK) * unit * 0.92f,
             )
         }
         if (snapshot.elapsed > 0f && snapshot.elapsed < GO_SECONDS) {
@@ -136,7 +163,14 @@ internal fun DrawScope.drawCallout(text: TextMeasurer, word: String, scale: Floa
 
 /** Draws [word] centred on [at], shrunk to fit [maxWidth] when it is wider. */
 internal fun DrawScope.drawWord(
-    text: TextMeasurer, word: String, at: Offset, fontSize: TextUnit, colour: Color, scale: Float, alpha: Float, maxWidth: Float = Float.MAX_VALUE,
+    text: TextMeasurer,
+    word: String,
+    at: Offset,
+    fontSize: TextUnit,
+    colour: Color,
+    scale: Float,
+    alpha: Float,
+    maxWidth: Float = Float.MAX_VALUE,
 ) {
     if (alpha <= 0f || scale <= 0f) return
     val layout = text.measure(word, TextStyle(color = colour, fontSize = fontSize, fontWeight = FontWeight.Bold))
@@ -189,7 +223,10 @@ internal fun DrawScope.drawBoat(at: Offset, r: Float, colour: Color, degrees: Fl
         close()
     }
     val pivot = at.copy(y = at.y + r * 0.7f)
-    withTransform({ rotate(degrees, at); scale(scaleX, scaleY, pivot) }) {
+    withTransform({
+        rotate(degrees, at)
+        scale(scaleX, scaleY, pivot)
+    }) {
         drawPath(hull, colour)
         drawPath(sail, Palette.paper)
     }
@@ -208,12 +245,14 @@ internal fun DrawScope.drawSkyParticles(fx: RiverFx) {
                 drawRect(colour.copy(alpha = fade), at - Offset(s * 0.7f, s * 0.9f), Size(s * 1.4f, s * 1.8f))
                 drawCircle(Palette.light.copy(alpha = fade), s * 0.36f, at)
             }
+
             Kind.Confetti -> {
                 val w = s * 1.6f * abs(cos(it.life * 7f + it.x * 30f)) + s * 0.2f
                 withTransform({ rotate(it.life * 120f + it.x * 900f, at) }) {
                     drawRect(fxColour(it.colour).copy(alpha = fade), at - Offset(w / 2, s * 0.5f), Size(w, s))
                 }
             }
+
             else -> Unit
         }
     }

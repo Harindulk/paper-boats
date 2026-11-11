@@ -44,7 +44,12 @@ class ControllerRenderTest {
     }
 
     @Test
-    fun results() = save("results") { RaceResults(colour = 0, HostMessage.Status(Phase.Results, score = 6, place = 2, secondsLeft = 0, award = "Pirate. Stole 3 lanterns by ramming.")) }
+    fun results() = save("results") {
+        RaceResults(
+            colour = 0,
+            HostMessage.Status(Phase.Results, score = 6, place = 2, secondsLeft = 0, award = "Pirate. Stole 3 lanterns by ramming."),
+        )
+    }
 
     @Test
     fun lostHost() = save("lost") { LostHost(onRejoin = {}) }

@@ -52,19 +52,30 @@ fun TypedHostController(
 internal fun HostEntry(address: String, onAddress: (String) -> Unit, onConnect: () -> Unit) {
     var tried by remember { mutableStateOf(false) }
     val wrong = tried && controllerSocketUrl(address) == null
-    val connect = { tried = true; onConnect() }
+    val connect = {
+        tried = true
+        onConnect()
+    }
     Column(
         Modifier.fillMaxSize().background(Palette.night).padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
     ) {
         BasicText("Find the TV", style = Huge.copy(color = Palette.ink, fontSize = 64.sp, letterSpacing = (-1).sp))
+        val hint = if (wrong) {
+            "That isn't an address yet. It looks like 192.168.1.24:8642"
+        } else {
+            "Type the address under the QR code on the big screen"
+        }
         BasicText(
-            if (wrong) "That isn't an address yet. It looks like 192.168.1.24:8642" else "Type the address under the QR code on the big screen",
+            hint,
             style = Body.copy(color = if (wrong) Palette.light else Palette.inkSoft, fontWeight = FontWeight.Normal),
         )
         BasicTextField(
             address,
-            { tried = false; onAddress(it) },
+            {
+                tried = false
+                onAddress(it)
+            },
             singleLine = true,
             textStyle = Body.copy(color = Palette.ink, fontSize = 28.sp),
             cursorBrush = SolidColor(Palette.light),

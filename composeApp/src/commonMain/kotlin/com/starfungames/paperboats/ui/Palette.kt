@@ -9,8 +9,10 @@ object Palette {
     val bank = Color(0xFF0E2419)
     val rock = Color(0xFF07121A)
     val light = Color(0xFFFFC46B)
+
     /** Golden-hour lanterns: a deeper, richer amber than [light]. */
     val gold = Color(0xFFFFA62B)
+
     /** Drifting logs: a kraft-paper plank with a darker underside. */
     val log = Color(0xFFC8AE85)
     val logEdge = Color(0xFF7E6748)
@@ -20,8 +22,14 @@ object Palette {
 
     /** One colour per player seat, far apart on the wheel. */
     val players = listOf(
-        Color(0xFFFF8A65), Color(0xFF64B5F6), Color(0xFFAED581), Color(0xFFBA68C8),
-        Color(0xFFFFD54F), Color(0xFF4DD0E1), Color(0xFFF06292), Color(0xFFE0E0E0),
+        Color(0xFFFF8A65),
+        Color(0xFF64B5F6),
+        Color(0xFFAED581),
+        Color(0xFFBA68C8),
+        Color(0xFFFFD54F),
+        Color(0xFF4DD0E1),
+        Color(0xFFF06292),
+        Color(0xFFE0E0E0),
     )
 
     fun player(colour: Int): Color = players[colour.mod(players.size)]

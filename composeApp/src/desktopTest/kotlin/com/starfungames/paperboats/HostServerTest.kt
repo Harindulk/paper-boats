@@ -12,11 +12,11 @@ import com.starfungames.paperboats.protocol.HostMessage.Phase
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
+import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.cancelChildren
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.Test
@@ -92,7 +92,10 @@ class HostServerTest {
             assertEquals(seat, welcomes(2))
             phone.send(PlayerInput(steer = 1f))
             val leaned = withTimeoutOrNull(5_000) {
-                while (host.snapshot()!!.boats.single().lean < 0.5f) { host.tick(0.05f); delay(20) }
+                while (host.snapshot()!!.boats.single().lean < 0.5f) {
+                    host.tick(0.05f)
+                    delay(20)
+                }
                 true
             }
             assertEquals(true, leaned, "steering after a reconnect reaches the host")

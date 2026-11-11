@@ -25,7 +25,10 @@ fun main() {
             hostUrl = "ws://${pageHost()}/ws",
             buzz = { vibrate(vibrationPattern(it).joinToString(",")) },
             savedName = load("name").orEmpty(),
-            saveSeat = { name, id -> store("name", name); store("seat", id.toString()) },
+            saveSeat = { name, id ->
+                store("name", name)
+                store("seat", id.toString())
+            },
             savedSeatId = load("seat")?.toIntOrNull(),
         )
     }

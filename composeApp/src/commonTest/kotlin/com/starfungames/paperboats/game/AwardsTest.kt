@@ -36,7 +36,16 @@ class AwardsTest {
     @Test
     fun aPlayerWinsOnlyOneAwardAndTheNextBestGetsIt() {
         // Ana steals twice and has the most bumps too, so Shipwreck passes to Chen, the next most bumped.
-        val events = listOf(ram(4, by = 1), ram(2, by = 1), RockHit(1, 0f, 0f), RockHit(1, 0f, 0f), RockHit(1, 0f, 0f), RockHit(3, 0f, 0f), RockHit(3, 0f, 0f))
+        val events =
+            listOf(
+                ram(4, by = 1),
+                ram(2, by = 1),
+                RockHit(1, 0f, 0f),
+                RockHit(1, 0f, 0f),
+                RockHit(1, 0f, 0f),
+                RockHit(3, 0f, 0f),
+                RockHit(3, 0f, 0f),
+            )
         assertEquals(listOf(1, 3), awards(events, standings).map { it.playerId })
     }
 

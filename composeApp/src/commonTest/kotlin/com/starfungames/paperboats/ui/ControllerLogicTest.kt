@@ -17,7 +17,10 @@ class ControllerLogicTest {
     @Test
     fun givesUpAfterThreeRetriesOneSecondApart() = runTest {
         var attempts = 0
-        stayConnected { attempts++; false }
+        stayConnected {
+            attempts++
+            false
+        }
         assertEquals(4, attempts)
         assertEquals(3_000, currentTime)
     }
@@ -26,7 +29,10 @@ class ControllerLogicTest {
     fun aDropAfterAWelcomeGetsThreeFreshRetries() = runTest {
         val welcomed = ArrayDeque(listOf(false, true, false, false, false, true))
         var attempts = 0
-        stayConnected { attempts++; welcomed.removeFirst() }
+        stayConnected {
+            attempts++
+            welcomed.removeFirst()
+        }
         assertEquals(5, attempts)
     }
 }

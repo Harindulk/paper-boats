@@ -61,7 +61,9 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
     fun snapshot() = RaceSnapshot(
         elapsed = elapsed,
         length = length,
-        boats = boats.map { BoatView(it.player, it.x, it.y, it.score, it.stun > 0f, it.boost > 0f, (it.vx / STEER_SPEED).coerceIn(-1f, 1f)) },
+        boats = boats.map {
+            BoatView(it.player, it.x, it.y, it.score, it.stun > 0f, it.boost > 0f, (it.vx / STEER_SPEED).coerceIn(-1f, 1f))
+        },
         lights = lights.toList(),
         rocks = rocks.toList(),
         river = river,
@@ -114,7 +116,9 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
                 }
             }
             if (boat.stun <= 0f) {
-                logs.firstOrNull { abs(it.y - boat.y) < BOAT_RADIUS + LOG_HALF_THICKNESS && abs(it.x - boat.x) < it.halfWidth + BOAT_RADIUS }?.let { log ->
+                logs.firstOrNull {
+                    abs(it.y - boat.y) < BOAT_RADIUS + LOG_HALF_THICKNESS && abs(it.x - boat.x) < it.halfWidth + BOAT_RADIUS
+                }?.let { log ->
                     boat.stun = STUN_SECONDS
                     events += LogHit(boat.player.id, boat.x, boat.y)
                     boat.boost = 0f
@@ -197,9 +201,11 @@ class Race(players: List<Player>, seed: Long, val length: Float = DEFAULT_LENGTH
         const val BOAT_RADIUS = 0.028f
         const val LIGHT_RADIUS = 0.018f
         const val BANK = 0.06f
+
         /** The last seconds of a race, when every lantern scores 2. */
         const val GOLDEN_HOUR_SECONDS = 10f
         const val LOG_HALF_THICKNESS = 0.014f
+
         /** Boats are drawn larger than their hit circle, so a ram counts when the drawn hulls touch. */
         private const val RAM_REACH = 2.5f * BOAT_RADIUS
         private const val MAX_STEP = 0.1f

@@ -1,0 +1,23 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{kt,kts}]
+# intellij_idea is ktlint's encoding of the Kotlin coding conventions (kotlinlang.org/docs/coding-conventions.html), the same
+# style as IntelliJ's "Kotlin style guide" formatter. ktlint_official was tried first: it adds ktlint's own stricter rules on top
+# (every signature with 2+ parameters split one per line, every multiline expression moved below its `=`), which turned short
+# one-line functions and Compose calls into tall lists without making them clearer.
+ktlint_code_style = intellij_idea
+# The conventions set no limit; 140 keeps game math and Compose modifier chains on one readable line without wrapping everything.
+max_line_length = 140
+# Composable functions are named like types (PascalCase), as the Compose API guidelines require.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+
+[*.{yml,yaml,json,toml}]
+indent_size = 2

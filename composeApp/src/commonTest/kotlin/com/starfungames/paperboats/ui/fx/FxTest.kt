@@ -58,7 +58,10 @@ class FxTest {
     fun cameraFollowConvergesWithoutOvershoot() {
         val camera = Camera()
         var maxY = 0f
-        repeat(90) { camera.follow(10f, 1f / 60); maxY = maxOf(maxY, camera.y) }
+        repeat(90) {
+            camera.follow(10f, 1f / 60)
+            maxY = maxOf(maxY, camera.y)
+        }
         assertTrue(abs(camera.y - 10f) < 0.1f, "within 1% after 1.5 s, was ${camera.y}")
         assertTrue(maxY <= 10f, "overshot to $maxY")
     }

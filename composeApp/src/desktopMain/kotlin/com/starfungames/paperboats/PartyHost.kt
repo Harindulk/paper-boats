@@ -7,8 +7,8 @@ import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.RaceEvent
 import com.starfungames.paperboats.game.RaceSnapshot
-import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.game.Rammed
+import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.game.RockHit
 import com.starfungames.paperboats.party.PartySession
 import com.starfungames.paperboats.protocol.BuzzKind
@@ -72,11 +72,15 @@ class PartyHost(roundSeconds: Float = 60f) {
         party.tick(dt)
         val events = party.drainEvents()
         screenEvents += events
-        for (event in events) when (event) {
-            is LightCollected -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Light))
-            // A whirlpool only drags, so it gets no buzz: the phone buzzes for lanterns and for bumps that stun.
-            is RockHit, is LogHit, is Rammed -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
-            else -> Unit
+        for (event in events) {
+            when (event) {
+                is LightCollected -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Light))
+
+                // A whirlpool only drags, so it gets no buzz: the phone buzzes for lanterns and for bumps that stun.
+                is RockHit, is LogHit, is Rammed -> outboxes[event.playerId]?.trySend(HostMessage.Buzz(BuzzKind.Rock))
+
+                else -> Unit
+            }
         }
         // start() and leave() can change the phase too, so compare with what the phones last heard.
         if (party.phase != sentPhase) {
@@ -117,7 +121,12 @@ class PartyHost(roundSeconds: Float = 60f) {
 
     private fun seat(name: String, rejoinId: Int?, outbox: Channel<HostMessage>): Player? = synchronized(party) {
         // The same phone came back before its old socket timed out: retire that socket so the seat is free to restore.
-        if (rejoinId != null) outboxes.remove(rejoinId)?.let { it.close(); party.leave(rejoinId) }
+        if (rejoinId != null) {
+            outboxes.remove(rejoinId)?.let {
+                it.close()
+                party.leave(rejoinId)
+            }
+        }
         party.join(name, rejoinId)?.also {
             outboxes[it.id] = outbox
             outbox.trySend(HostMessage.Welcome(it.id, it.colour))
@@ -142,15 +151,14 @@ class PartyHost(roundSeconds: Float = 60f) {
 }
 
 /** Serves the phone controller at / and the game link at /ws. Port 0 picks any free port. */
-fun startHostServer(host: PartyHost, port: Int = DEFAULT_PORT): EmbeddedServer<*, *> =
-    embeddedServer(CIO, port = port, host = "0.0.0.0") {
-        install(Compression) { gzip() }
-        install(WebSockets) { pingPeriod = 10.seconds }
-        routing {
-            staticResources("/", "controller")
-            webSocket("/ws") { host.serve(this) }
-        }
-        launch { host.broadcastForever() }
-    }.start(wait = false)
+fun startHostServer(host: PartyHost, port: Int = DEFAULT_PORT): EmbeddedServer<*, *> = embeddedServer(CIO, port = port, host = "0.0.0.0") {
+    install(Compression) { gzip() }
+    install(WebSockets) { pingPeriod = 10.seconds }
+    routing {
+        staticResources("/", "controller")
+        webSocket("/ws") { host.serve(this) }
+    }
+    launch { host.broadcastForever() }
+}.start(wait = false)
 
 const val DEFAULT_PORT = 8642

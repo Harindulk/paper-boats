@@ -23,6 +23,7 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
     private var nextId = 1
     private var race: Race? = null
     private var racesRun = 0
+
     /** The race's events not yet drained by the host, and every event of the race for the awards. */
     private val undrained = mutableListOf<RaceEvent>()
     private val history = mutableListOf<RaceEvent>()
@@ -50,14 +51,18 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         if (rejoinId != null && away.remove(rejoinId)) return seated.getValue(rejoinId)
         if (seated.size >= MAX_PLAYERS) return null
         val colour = (0 until MAX_PLAYERS).first { c -> seated.values.none { it.colour == c } }
-        val cleanName = name.trim().take(MAX_NAME).ifEmpty { "Player ${nextId}" }
+        val cleanName = name.trim().take(MAX_NAME).ifEmpty { "Player $nextId" }
         return Player(nextId++, cleanName, colour).also { seated[it.id] = it }
     }
 
     /** In the lobby the seat is freed; later the player is only marked away, so their boat drifts and they can rejoin. */
     fun leave(id: Int) {
         inputs.remove(id)
-        if (phase == Phase.Lobby) seated.remove(id) else if (id in seated) away += id
+        if (phase == Phase.Lobby) {
+            seated.remove(id)
+        } else if (id in seated) {
+            away += id
+        }
         if (phase == Phase.Countdown && seated.keys.all { it in away }) {
             phase = Phase.Lobby
             dropAway()

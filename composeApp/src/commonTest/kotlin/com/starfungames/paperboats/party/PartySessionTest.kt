@@ -137,9 +137,18 @@ class PartySessionTest {
 
     @Test
     fun oldJoinDecodesAndBuzzEncodesWithItsType() {
-        assertEquals(ControllerMessage.Join("a"), ProtocolJson.decodeFromString(ControllerMessage.serializer(), """{"type":"join","name":"a"}"""))
+        assertEquals(
+            ControllerMessage.Join("a"),
+            ProtocolJson.decodeFromString(ControllerMessage.serializer(), """{"type":"join","name":"a"}"""),
+        )
         val rejoin: ControllerMessage = ControllerMessage.Join("a", rejoinId = 4)
-        assertEquals(rejoin, ProtocolJson.decodeFromString(ControllerMessage.serializer(), ProtocolJson.encodeToString(ControllerMessage.serializer(), rejoin)))
+        assertEquals(
+            rejoin,
+            ProtocolJson.decodeFromString(
+                ControllerMessage.serializer(),
+                ProtocolJson.encodeToString(ControllerMessage.serializer(), rejoin),
+            ),
+        )
         val buzz: HostMessage = HostMessage.Buzz(BuzzKind.Rock)
         assertEquals("""{"type":"buzz","kind":"Rock"}""", ProtocolJson.encodeToString(HostMessage.serializer(), buzz))
     }
@@ -147,9 +156,15 @@ class PartySessionTest {
     @Test
     fun statusLinesReadNaturally() {
         assertEquals("2nd, 5 lanterns, 12 s", describe(HostMessage.Status(Phase.Racing, score = 5, place = 2, secondsLeft = 12)))
-        assertEquals("Race starts in 3", describe(HostMessage.Status(Phase.Countdown, score = 0, place = 0, secondsLeft = 0, countdown = 3)))
+        assertEquals(
+            "Race starts in 3",
+            describe(HostMessage.Status(Phase.Countdown, score = 0, place = 0, secondsLeft = 0, countdown = 3)),
+        )
         assertEquals("Finished 1st with 1 lantern", describe(HostMessage.Status(Phase.Results, score = 1, place = 1, secondsLeft = 0)))
-        assertEquals(listOf("1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"), listOf(1, 2, 3, 4, 11, 12, 13, 21, 22).map(::ordinal))
+        assertEquals(
+            listOf("1st", "2nd", "3rd", "4th", "11th", "12th", "13th", "21st", "22nd"),
+            listOf(1, 2, 3, 4, 11, 12, 13, 21, 22).map(::ordinal),
+        )
     }
 
     @Test
@@ -159,13 +174,17 @@ class PartySessionTest {
         assertEquals("""{"type":"input","steer":-0.5,"paddle":true}""", json)
         assertEquals(input, ProtocolJson.decodeFromString(ControllerMessage.serializer(), json))
         val welcome: HostMessage = HostMessage.Welcome(playerId = 3, colour = 2)
-        assertEquals(welcome, ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), welcome)))
+        assertEquals(
+            welcome,
+            ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), welcome)),
+        )
     }
 
     @Test
     fun steeringFromAControllerIsClamped() {
         assertEquals(PlayerInput(1f, false), ControllerMessage.Input(steer = 7f, paddle = false).toPlayerInput())
     }
+
     @Test
     fun riversRotateEveryRace() {
         val party = PartySession(roundSeconds = 0.5f)
@@ -239,6 +258,9 @@ class PartySessionTest {
         val old = """{"type":"status","phase":"Results","score":3,"place":1,"secondsLeft":0}"""
         assertEquals(HostMessage.Status(Phase.Results, 3, 1, 0), ProtocolJson.decodeFromString(HostMessage.serializer(), old))
         val withAward: HostMessage = HostMessage.Status(Phase.Results, 3, 1, 0, award = "Pirate. Stole 2 lanterns by ramming.")
-        assertEquals(withAward, ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), withAward)))
+        assertEquals(
+            withAward,
+            ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), withAward)),
+        )
     }
 }

@@ -20,15 +20,22 @@ class Camera {
         val temp = (velocity + omega * change) * dt
         velocity = (velocity - omega * temp) * decay
         var next = targetY + (change + temp) * decay
-        if ((targetY > y) == (next > targetY)) { next = targetY; velocity = 0f }
+        if ((targetY > y) == (next > targetY)) {
+            next = targetY
+            velocity = 0f
+        }
         y = next
     }
 
     /** Adds shake; hits stack and clamp at 1. */
-    fun addTrauma(amount: Float) { trauma = (trauma + amount).coerceIn(0f, 1f) }
+    fun addTrauma(amount: Float) {
+        trauma = (trauma + amount).coerceIn(0f, 1f)
+    }
 
     /** Lets trauma decay over [dt] seconds. */
-    fun step(dt: Float) { trauma = (trauma - TRAUMA_DECAY * dt).coerceAtLeast(0f) }
+    fun step(dt: Float) {
+        trauma = (trauma - TRAUMA_DECAY * dt).coerceAtLeast(0f)
+    }
 
     /** Shake offset in race units at [time] seconds: trauma² so small hits barely move, smooth sines not jitter. */
     fun shakeOffset(time: Float): Pair<Float, Float> {

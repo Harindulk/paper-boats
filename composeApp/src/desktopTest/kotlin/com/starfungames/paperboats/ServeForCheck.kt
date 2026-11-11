@@ -16,7 +16,10 @@ class ServeForCheck {
         var started = false
         val end = System.currentTimeMillis() + seconds * 1000
         while (System.currentTimeMillis() < end) {
-            if (!started && startAt != null && host.players.size >= startAt && host.canStart()) { host.start(); started = true }
+            if (!started && startAt != null && host.players.size >= startAt && host.canStart()) {
+                host.start()
+                started = true
+            }
             host.tick(1f / 60f)
             Thread.sleep(16)
         }

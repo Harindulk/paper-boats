@@ -18,8 +18,10 @@ fun QrCode(text: String, modifier: Modifier = Modifier) {
     Canvas(modifier) {
         val cell = minOf(size.width, size.height) / matrix.width
         drawRect(Color.White, size = Size(cell * matrix.width, cell * matrix.height))
-        for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
-            if (matrix[x, y]) drawRect(Color(0xFF0B1A24), Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+        for (y in 0 until matrix.height) {
+            for (x in 0 until matrix.width) {
+                if (matrix[x, y]) drawRect(Color(0xFF0B1A24), Offset(x * cell, y * cell), Size(cell + 0.5f, cell + 0.5f))
+            }
         }
     }
 }

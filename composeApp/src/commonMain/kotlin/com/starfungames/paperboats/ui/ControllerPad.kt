@@ -92,8 +92,17 @@ fun ControllerPad(
 
     LaunchedEffect(buzz) {
         when (buzz?.kind) {
-            BuzzKind.Light -> { flash = true; delay(80); flash = false }
-            BuzzKind.Rock -> { rock.snapTo(0f); rock.animateTo(1f, tween(450)) }
+            BuzzKind.Light -> {
+                flash = true
+                delay(80)
+                flash = false
+            }
+
+            BuzzKind.Rock -> {
+                rock.snapTo(0f)
+                rock.animateTo(1f, tween(450))
+            }
+
             else -> Unit
         }
     }
@@ -108,15 +117,18 @@ fun ControllerPad(
         ) {
             if (hurt > 0f) Box(Modifier.fillMaxSize().background(RockRed.copy(alpha = 0.45f * hurt)))
             Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Bottom) {
-                if (place.isNotEmpty()) BasicText(
-                    place,
-                    Modifier.graphicsLayer {
-                        scaleX = placePop.value; scaleY = placePop.value
-                        transformOrigin = TransformOrigin(0f, 1f)
-                    },
-                    style = Huge.copy(color = Palette.night),
-                    maxLines = 1,
-                )
+                if (place.isNotEmpty()) {
+                    BasicText(
+                        place,
+                        Modifier.graphicsLayer {
+                            scaleX = placePop.value
+                            scaleY = placePop.value
+                            transformOrigin = TransformOrigin(0f, 1f)
+                        },
+                        style = Huge.copy(color = Palette.night),
+                        maxLines = 1,
+                    )
+                }
                 BasicText(status, style = Body.copy(color = Palette.night))
             }
         }
@@ -144,11 +156,18 @@ fun ControllerPad(
                 contentAlignment = Alignment.Center,
             ) {
                 Box(Modifier.offset { IntOffset(knob.value.roundToInt(), 0) }.size(84.dp).background(Palette.paper, CircleShape))
-                BasicText("Steer", Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp), style = Body.copy(color = Palette.inkSoft))
+                BasicText(
+                    "Steer",
+                    Modifier.align(Alignment.BottomCenter).padding(bottom = 28.dp),
+                    style = Body.copy(color = Palette.inkSoft),
+                )
             }
             Box(
                 Modifier.weight(1f).fillMaxSize()
-                    .graphicsLayer { scaleX = press.value; scaleY = press.value }
+                    .graphicsLayer {
+                        scaleX = press.value
+                        scaleY = press.value
+                    }
                     .background(if (flash) Palette.paper else Palette.light)
                     .pointerInput(Unit) {
                         awaitEachGesture {

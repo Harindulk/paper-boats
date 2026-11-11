@@ -74,11 +74,18 @@ fun ControllerApp(
                 client.run(hostUrl, name, rejoinId = seat) { message ->
                     when (message) {
                         is HostMessage.Welcome -> {
-                            welcomed = true; seat = message.playerId; colour = message.colour
+                            welcomed = true
+                            seat = message.playerId
+                            colour = message.colour
                             saveSeat(name, message.playerId)
                         }
+
                         is HostMessage.Status -> status = message
-                        is HostMessage.Buzz -> { buzz(message.kind); lastBuzz = BuzzEvent(message.kind) }
+
+                        is HostMessage.Buzz -> {
+                            buzz(message.kind)
+                            lastBuzz = BuzzEvent(message.kind)
+                        }
                     }
                 }
             } catch (e: CancellationException) {
@@ -95,15 +102,20 @@ fun ControllerApp(
         if (phase == Phase.Countdown) sawCountdown = true
         if (phase == Phase.Racing && sawCountdown) {
             sawCountdown = false
-            showGo = true; delay(700); showGo = false
+            showGo = true
+            delay(700)
+            showGo = false
         }
     }
 
     val current = status
     when {
         lost -> LostHost(onRejoin = { joins++ }, changeHost)
+
         current?.phase == Phase.Countdown -> Countdown(colour, current.countdown.toString())
+
         current?.phase == Phase.Results -> RaceResults(colour, current)
+
         else -> Box(Modifier.fillMaxSize()) {
             val race = current?.takeIf { welcomed && it.phase == Phase.Racing }
             ControllerPad(
@@ -149,7 +161,10 @@ internal fun Countdown(colour: Int, text: String) {
     Box(Modifier.fillMaxSize().background(Palette.player(colour)), contentAlignment = Alignment.Center) {
         BasicText(
             text,
-            Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value },
+            Modifier.graphicsLayer {
+                scaleX = pop.value
+                scaleY = pop.value
+            },
             style = Huge.copy(color = Palette.night, fontSize = 220.sp),
         )
     }
@@ -165,13 +180,21 @@ internal fun RaceResults(colour: Int, status: HostMessage.Status) {
         BasicText("You finished", style = Body.copy(color = Palette.night))
         BasicText(
             ordinal(status.place),
-            Modifier.graphicsLayer { scaleX = pop.value; scaleY = pop.value; transformOrigin = TransformOrigin(0f, 0.5f) },
+            Modifier.graphicsLayer {
+                scaleX = pop.value
+                scaleY = pop.value
+                transformOrigin = TransformOrigin(0f, 0.5f)
+            },
             style = Huge.copy(color = Palette.night),
         )
         BasicText("with ${lanterns(status.score)}", style = Body.copy(color = Palette.night))
         status.award?.let { award ->
             // The host sends "Title. Line."; the title gets the big type.
-            BasicText(award.substringBefore(". "), Modifier.padding(top = 32.dp), style = Huge.copy(color = Palette.night, fontSize = 48.sp, letterSpacing = 0.sp))
+            BasicText(
+                award.substringBefore(". "),
+                Modifier.padding(top = 32.dp),
+                style = Huge.copy(color = Palette.night, fontSize = 48.sp, letterSpacing = 0.sp),
+            )
             BasicText(award.substringAfter(". ", ""), style = Body.copy(color = Palette.night))
         }
         BasicText("Wait for the next race", Modifier.padding(top = 48.dp), style = Body.copy(color = Palette.night.copy(alpha = 0.7f)))
@@ -185,7 +208,10 @@ internal fun LostHost(onRejoin: () -> Unit, changeHost: (() -> Unit)? = null) {
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically),
     ) {
         BasicText("Lost the host", style = Huge.copy(color = Palette.ink, fontSize = 64.sp, letterSpacing = (-1).sp))
-        BasicText("Check you're on the same Wi-Fi as the big screen.", style = Body.copy(color = Palette.inkSoft, fontWeight = FontWeight.Normal))
+        BasicText(
+            "Check you're on the same Wi-Fi as the big screen.",
+            style = Body.copy(color = Palette.inkSoft, fontWeight = FontWeight.Normal),
+        )
         BigButton("Rejoin", onRejoin)
         if (changeHost != null) {
             BasicText(

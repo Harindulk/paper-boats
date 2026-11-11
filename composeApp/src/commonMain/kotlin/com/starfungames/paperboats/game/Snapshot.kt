@@ -16,7 +16,15 @@ data class Log(val x: Float, val y: Float, val halfWidth: Float, val vx: Float)
 data class Whirlpool(val x: Float, val y: Float, val radius: Float)
 
 @Serializable
-data class BoatView(val player: Player, val x: Float, val y: Float, val score: Int, val stunned: Boolean, val boosting: Boolean, val lean: Float = 0f)
+data class BoatView(
+    val player: Player,
+    val x: Float,
+    val y: Float,
+    val score: Int,
+    val stunned: Boolean,
+    val boosting: Boolean,
+    val lean: Float = 0f,
+)
 
 /** Everything the big screen needs to draw one frame. */
 @Serializable
@@ -36,5 +44,7 @@ data class RaceSnapshot(
     val goldenHour: Boolean get() = timeLeft <= Race.GOLDEN_HOUR_SECONDS
 
     /** Players ordered by lights collected, then by distance travelled, then by id so ties stay stable. */
-    val standings: List<BoatView> get() = boats.sortedWith(compareByDescending<BoatView> { it.score }.thenByDescending { it.y }.thenBy { it.player.id })
+    val standings: List<BoatView> get() = boats.sortedWith(
+        compareByDescending<BoatView> { it.score }.thenByDescending { it.y }.thenBy { it.player.id },
+    )
 }

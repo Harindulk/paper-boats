@@ -43,6 +43,7 @@ class RiverFx(seed: Long = 7) {
         private set
     var camera = Camera()
         private set
+
     /** When the finish began, for the results screen's staggered entrances. */
     var finishedAt = 0f
         private set
@@ -66,16 +67,20 @@ class RiverFx(seed: Long = 7) {
                 particles.emit(Kind.Spark, event.x, event.y, LIGHT_COLOUR, if (event.value > 1) 22 else 14, random)
                 pending += Pop(event.x, event.y, time, event.value)
             }
+
             is WhirlpoolEntered -> particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 6, random)
+
             is RockHit, is LogHit -> {
                 particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 18, random)
                 camera.addTrauma(ROCK_TRAUMA)
             }
+
             is Rammed -> {
                 particles.emit(Kind.Splash, event.x, event.y, PAPER_COLOUR, 24, random)
                 camera.addTrauma(ROCK_TRAUMA)
                 if (event.stole) pending += Pop(event.x, event.y, time)
             }
+
             is Paddled -> {
                 paddledAt[event.playerId] = time
                 particles.emit(Kind.Wake, event.x, event.y - STERN, PAPER_COLOUR, 3, random)
@@ -92,7 +97,14 @@ class RiverFx(seed: Long = 7) {
             race.boats.forEach { boat ->
                 val due = wakeDue.getOrPut(boat.player.id) { time }
                 if (time >= due) {
-                    particles.emit(Kind.Wake, boat.x + (random.nextFloat() - 0.5f) * 0.02f, boat.y - STERN, PAPER_COLOUR, if (boat.boosting) 2 else 1, random)
+                    particles.emit(
+                        Kind.Wake,
+                        boat.x + (random.nextFloat() - 0.5f) * 0.02f,
+                        boat.y - STERN,
+                        PAPER_COLOUR,
+                        if (boat.boosting) 2 else 1,
+                        random,
+                    )
                     wakeDue[boat.player.id] = due + WAKE_EVERY
                 }
             }
@@ -145,6 +157,7 @@ class RiverFx(seed: Long = 7) {
         /** Particle colour codes beyond the player seats. */
         const val LIGHT_COLOUR = 100
         const val PAPER_COLOUR = 101
+
         /** Where the winner's boat sits on the results screen: x across, y up from the bottom, both 0..1. */
         const val FINISH_X = 0.3f
         const val FINISH_Y = 0.24f

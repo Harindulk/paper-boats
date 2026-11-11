@@ -3,11 +3,11 @@ package com.starfungames.paperboats.ui
 import com.starfungames.paperboats.game.BoatView
 import com.starfungames.paperboats.game.LightCollected
 import com.starfungames.paperboats.game.LogHit
-import com.starfungames.paperboats.game.WhirlpoolEntered
 import com.starfungames.paperboats.game.Paddled
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.RaceSnapshot
 import com.starfungames.paperboats.game.RockHit
+import com.starfungames.paperboats.game.WhirlpoolEntered
 import com.starfungames.paperboats.ui.fx.Particles.Kind
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -18,9 +18,11 @@ class RiverFxTest {
     private val ben = Player(2, "Ben", 1)
 
     private fun snapshot(leaderY: Float = 0f, boosting: Boolean = false) = RaceSnapshot(
-        elapsed = 5f, length = 60f,
+        elapsed = 5f,
+        length = 60f,
         boats = listOf(BoatView(ana, 0.3f, leaderY, 2, false, boosting), BoatView(ben, 0.7f, leaderY - 0.1f, 1, false, false)),
-        lights = emptyList(), rocks = emptyList(),
+        lights = emptyList(),
+        rocks = emptyList(),
     )
 
     private fun RiverFx.run(seconds: Float, snapshot: RaceSnapshot?) {
@@ -110,6 +112,7 @@ class RiverFxTest {
         assertEquals(0.5f, fx.arrival(ana.id), 0.02f)
         assertEquals(0f, fx.arrival(ben.id))
     }
+
     @Test
     fun aGoldLanternPopsPlusTwoWithMoreSparks() {
         val plain = RiverFx().apply { onEvents(listOf(LightCollected(1, 0.4f, 3f))) }

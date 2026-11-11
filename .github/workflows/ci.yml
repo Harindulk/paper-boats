@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+
+      # Caches Gradle dependencies and wrapper between runs.
+      - uses: gradle/actions/setup-gradle@v6
+
+      # The runner ships an Android SDK; this points ANDROID_HOME at it and accepts the licences.
+      - uses: android-actions/setup-android@v4
+
+      - name: Style (ktlint), tests and every target
+        run: >
+          ./gradlew --continue
+          ktlintCheck
+          :composeApp:desktopTest
+          :composeApp:compileKotlinWasmJs
+          :androidApp:assembleDebug
+          :androidApp:testDebugUnitTest

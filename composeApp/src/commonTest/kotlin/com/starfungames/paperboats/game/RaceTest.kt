@@ -26,7 +26,10 @@ class RaceTest {
         val b = Race(players, seed = 7)
         val noise = Random(1)
         val script = List(600) { mapOf(1 to PlayerInput(noise.nextFloat() * 2 - 1, noise.nextBoolean())) }
-        script.forEach { a.step(1f / 60f, it); b.step(1f / 60f, it) }
+        script.forEach {
+            a.step(1f / 60f, it)
+            b.step(1f / 60f, it)
+        }
         assertEquals(a.snapshot(), b.snapshot())
     }
 
@@ -135,10 +138,17 @@ class RaceTest {
             val ana = before.boats.first { it.player.id == 1 }
             val ben = before.boats.first { it.player.id == 2 }
             val chasing = t > sweepSeconds
-            race.step(1f / 60f, mapOf(
-                1 to if (chasing) PlayerInput(((ben.x - ana.x) * 12f).coerceIn(-1f, 1f), paddle = hypot(ben.x - ana.x, ben.y - ana.y) < 0.12f && (t * 3f).toInt() % 2 == 0) else PlayerInput(),
-                2 to PlayerInput(steer = if (chasing) 0f else if ((t / 1.1f).toInt() % 2 == 0) 1f else -1f),
-            ))
+            val close = hypot(ben.x - ana.x, ben.y - ana.y) < 0.12f
+            val anaSteer = ((ben.x - ana.x) * 12f).coerceIn(-1f, 1f)
+            val anaInput = if (chasing) PlayerInput(anaSteer, paddle = close && (t * 3f).toInt() % 2 == 0) else PlayerInput()
+            val benSteer = if (chasing) {
+                0f
+            } else if ((t / 1.1f).toInt() % 2 == 0) {
+                1f
+            } else {
+                -1f
+            }
+            race.step(1f / 60f, mapOf(1 to anaInput, 2 to PlayerInput(steer = benSteer)))
             race.drainEvents().filterIsInstance<Rammed>().firstOrNull()?.let { return it to (before to race.snapshot()) }
             t += 1f / 60f
         }
@@ -176,7 +186,8 @@ class RaceTest {
         val race = Race(players, seed = 4)
         assertNotNull(chase(race, sweepSeconds = 0f))
         var again = 0
-        repeat(30) { // 0.5 s, inside the stun
+        repeat(30) {
+            // 0.5 s, inside the stun
             race.step(1f / 60f, mapOf(1 to PlayerInput(paddle = it % 2 == 0)))
             again += race.drainEvents().count { it is Rammed }
         }
@@ -209,12 +220,14 @@ class RaceTest {
         val gaps = xs.zipWithNext { a, b -> b - a }
         assertTrue(gaps.all { abs(it - gaps.first()) < 1e-5f })
     }
+
     @Test
     fun lanternCreekIsTheDefaultRiverAndPlaysExactlyAsBefore() {
         val race = Race(players, seed = 9)
         var t = 0f
         while (t < 20f) {
-            race.step(1f / 60f, mapOf(1 to PlayerInput(steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f, paddle = (t * 2).toInt() % 3 == 0)))
+            val steer = if ((t / 1.3f).toInt() % 2 == 0) 1f else -1f
+            race.step(1f / 60f, mapOf(1 to PlayerInput(steer, paddle = (t * 2).toInt() % 3 == 0)))
             t += 1f / 60f
         }
         val s = race.snapshot()
@@ -251,7 +264,12 @@ class RaceTest {
         }
         repeat(20) {
             play(race, 1f) { emptyMap() }
-            race.snapshot().logs.forEach { assertTrue(it.x - it.halfWidth >= Race.BANK - 1e-4f && it.x + it.halfWidth <= 1f - Race.BANK + 1e-4f, "log off the river: $it") }
+            race.snapshot().logs.forEach {
+                assertTrue(
+                    it.x - it.halfWidth >= Race.BANK - 1e-4f && it.x + it.halfWidth <= 1f - Race.BANK + 1e-4f,
+                    "log off the river: $it",
+                )
+            }
         }
     }
 
@@ -272,7 +290,12 @@ class RaceTest {
     @Test
     fun touchingALogStunsLikeARock() {
         val race = Race(listOf(players.first()), seed = 3, river = River.LogjamBend)
-        val (hit, after) = assertNotNull(steerInto<LogHit>(race) { s, b -> s.logs.filter { it.y > b.y }.minByOrNull { it.y }?.x }, "never reached a log")
+        val (hit, after) = assertNotNull(
+            steerInto<LogHit>(race) { s, b ->
+                s.logs.filter { it.y > b.y }.minByOrNull { it.y }?.x
+            },
+            "never reached a log",
+        )
         assertEquals(1, hit.playerId)
         assertTrue(after.boats.single().stunned)
         var again = 0
@@ -289,7 +312,10 @@ class RaceTest {
         assertTrue(race.snapshot().whirlpools.isNotEmpty())
         // Aim a little to one side of the centre so the pull has somewhere to go.
         val (entered, inside) = assertNotNull(
-            steerInto<WhirlpoolEntered>(race) { s, b -> s.whirlpools.filter { it.y > b.y }.minByOrNull { it.y }?.let { it.x + it.radius * 0.6f } },
+            steerInto<WhirlpoolEntered>(race) { s, b ->
+                val next = s.whirlpools.filter { it.y > b.y }.minByOrNull { it.y }
+                next?.let { it.x + it.radius * 0.6f }
+            },
             "never reached a whirlpool",
         )
         assertEquals(1, entered.playerId)
@@ -313,7 +339,11 @@ class RaceTest {
             race.drainEvents().filterIsInstance<LightCollected>().forEach { values += race.snapshot().timeLeft to it.value }
             t += 1f / 60f
         }
-        assertTrue(values.any { it.second == 1 } && values.any { it.second == 2 }, "test setup: lanterns on both sides of the golden hour: $values")
+        val bothSides = values.any { it.second == 1 } && values.any { it.second == 2 }
+        assertTrue(
+            bothSides,
+            "test setup: lanterns on both sides of the golden hour: $values",
+        )
         values.forEach { (left, value) -> assertEquals(if (left <= Race.GOLDEN_HOUR_SECONDS) 2 else 1, value, "at $left s left") }
         assertEquals(values.sumOf { it.second }, race.snapshot().boats.single().score)
     }

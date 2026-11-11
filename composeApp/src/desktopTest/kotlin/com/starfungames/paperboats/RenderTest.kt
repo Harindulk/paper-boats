@@ -88,12 +88,16 @@ class RenderTest {
     @Test
     fun countdownPopsOnTheRiver() {
         val fx = RiverFx().apply { step(0.5f, null) }
-        save("countdown.png", 1280, 800) { CountdownScreen(players("Ana", "Ben", "Chen"), 2.85f, fx, fx.time, raceNumber = 3, river = River.WhirlpoolNarrows) }
+        save("countdown.png", 1280, 800) {
+            CountdownScreen(players("Ana", "Ben", "Chen"), 2.85f, fx, fx.time, raceNumber = 3, river = River.WhirlpoolNarrows)
+        }
     }
 
     @Test
     fun phoneController() {
-        save("controller.png", 390, 760) { ControllerPad(colour = 2, status = "Ben: 2nd, 6 lights", onInput = {}, modifier = Modifier.fillMaxSize()) }
+        save("controller.png", 390, 760) {
+            ControllerPad(colour = 2, status = "Ben: 2nd, 6 lights", onInput = {}, modifier = Modifier.fillMaxSize())
+        }
     }
 
     @Test

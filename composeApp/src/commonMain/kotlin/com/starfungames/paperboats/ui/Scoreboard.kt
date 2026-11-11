@@ -14,8 +14,8 @@ import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,7 +38,11 @@ fun Scoreboard(snapshot: RaceSnapshot, modifier: Modifier = Modifier) {
         Box(Modifier.height(110.dp), contentAlignment = Alignment.BottomStart) {
             BasicText(
                 if (left > 0f) "$whole" else "Done",
-                Modifier.graphicsLayer { scaleX = pop; scaleY = pop; transformOrigin = TransformOrigin(0f, 1f) },
+                Modifier.graphicsLayer {
+                    scaleX = pop
+                    scaleY = pop
+                    transformOrigin = TransformOrigin(0f, 1f)
+                },
                 style = TextStyle(
                     color = if (hurry) Palette.light else Palette.ink,
                     fontSize = if (hurry) (56f + (HURRY_SECONDS - left) * 3.6f).sp else 56.sp,
