@@ -58,7 +58,7 @@ fun RaceScreen(snapshot: RaceSnapshot, fx: RiverFx, time: Float, countdown: Floa
                 val number = ceil(countdown).toInt().coerceAtLeast(1)
                 val since = number - countdown
                 Canvas(Modifier.fillMaxSize()) {
-                    val riverWidth = minOf(size.width, size.height * 0.8f) * (1 - 2 * Race.BANK)
+                    val riverWidth = riverUnit(size.width, size.height) * (1 - 2 * Race.BANK)
                     if (heading != null) {
                         drawWord(text, heading, Offset(center.x, size.height * 0.2f), 56.sp, Palette.paper, 1f, 1f, riverWidth * 0.9f)
                     }
@@ -104,13 +104,16 @@ fun Lobby(
             BasicText("Paper Boats", style = title)
             BasicText("A river race for up to eight phones. Scan the code to grab a boat, then press Space to race.", style = body)
             Spacer(Modifier.weight(1f))
-            Canvas(Modifier.fillMaxWidth().height(240.dp)) {
+            Canvas(Modifier.fillMaxWidth().height(300.dp)) {
                 drawRect(Palette.water, Offset(0f, size.height * 0.55f), Size(size.width, size.height * 0.45f))
-                val r = size.height * 0.2f
+                // Big enough to read each drawn sail from the sofa, small enough that eight boats never overlap.
+                val r = minOf(size.height * 0.2f, size.width / maxOf(players.size, 4) * 0.42f)
                 players.forEachIndexed { i, player ->
                     val age = fx.arrival(player.id)
                     val drop = Ease.outCubic(age / 0.35f)
                     val pop = if (age < 0.35f) 1f else Ease.outBack((age - 0.35f) / 0.3f).let { 1.25f - 0.25f * it }
+                    // A new sail drawing lands with a squash that springs back past round and settles.
+                    val sailHit = 1f - Ease.outBack(fx.sailAge(player.id) / 0.45f)
                     val x = size.width * (i + 0.5f) / maxOf(players.size, 4)
                     val waterline = size.height * 0.6f + sin(time * 4f + player.id * 2.1f) * r * 0.06f
                     drawBoat(
@@ -118,8 +121,9 @@ fun Lobby(
                         r,
                         Palette.player(player.colour),
                         degrees = sin(time * 2.4f + player.id) * 4f,
-                        scaleX = pop,
-                        scaleY = 2f - pop,
+                        scaleX = pop * (1f + 0.3f * sailHit),
+                        scaleY = (2f - pop) * (1f - 0.3f * sailHit),
+                        sail = player.sail,
                     )
                     drawWord(text, player.name, Offset(x, size.height * 0.88f), 22.sp, Palette.ink, 1f, drop)
                 }
@@ -161,6 +165,7 @@ fun Results(snapshot: RaceSnapshot, fx: RiverFx, time: Float, awards: List<Award
                 r * land,
                 Palette.player(winner.player.colour),
                 degrees = sin(time * 2.1f) * 5f,
+                sail = winner.player.sail,
             )
             drawSkyParticles(fx)
         }

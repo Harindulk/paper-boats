@@ -33,7 +33,7 @@ class RenderTest {
         assertTrue(bytes.size > 1_000)
     }
 
-    private fun players(vararg names: String) = names.mapIndexed { i, n -> Player(i + 1, n, i) }
+    private fun players(vararg names: String) = names.mapIndexed { i, n -> Player(i + 1, n, i, SampleSails.all[i % SampleSails.all.size]) }
 
     private fun inputs(players: List<Player>, t: Float) =
         players.associate { it.id to PlayerInput(steer = sin(t * (it.id + 1) * 0.7f), paddle = ((t * 3 * it.id).toInt() % 4 == 0)) }
@@ -104,6 +104,21 @@ class RenderTest {
         fx.noteArrivals(players)
         repeat(12) { fx.step(dt, null) } // Chen is still dropping in
         save("lobby.png", 1280, 800) {
+            Box(Modifier.fillMaxSize().background(Palette.night)) {
+                Lobby("http://192.168.1.24:8642/", players, fx, fx.time) { url, modifier -> QrCode(url, modifier) }
+            }
+        }
+    }
+
+    @Test
+    fun lobbySailLandsWithASquash() {
+        val players = players("Ana", "Ben", "Chen")
+        val fx = RiverFx()
+        fx.noteArrivals(players.map { it.copy(sail = if (it.id == 2) emptyList() else it.sail) })
+        repeat(90) { fx.step(dt, null) }
+        fx.noteArrivals(players) // Ben just pressed "Set sail"
+        repeat(5) { fx.step(dt, null) }
+        save("lobby-sail-lands.png", 1280, 800) {
             Box(Modifier.fillMaxSize().background(Palette.night)) {
                 Lobby("http://192.168.1.24:8642/", players, fx, fx.time) { url, modifier -> QrCode(url, modifier) }
             }

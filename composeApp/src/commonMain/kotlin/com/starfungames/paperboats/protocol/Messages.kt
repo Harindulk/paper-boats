@@ -17,6 +17,11 @@ sealed interface ControllerMessage {
     data class Input(val steer: Float, val paddle: Boolean) : ControllerMessage {
         fun toPlayerInput() = PlayerInput(steer.coerceIn(-1f, 1f), paddle)
     }
+
+    /** The player's sail drawing: each stroke is a flat [x0, y0, x1, y1, ...] list in 0..1 sail space. */
+    @Serializable
+    @SerialName("sail")
+    data class Sail(val strokes: List<List<Float>>) : ControllerMessage
 }
 
 /** Host to controller: just enough for the phone to show its own colour, place and score. */

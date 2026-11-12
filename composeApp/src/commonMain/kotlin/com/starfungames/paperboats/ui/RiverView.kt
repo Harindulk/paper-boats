@@ -5,12 +5,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.text.TextMeasurer
@@ -31,8 +34,11 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 /** How much river is on screen, in race units, and how far behind the leader the camera sits. */
-private const val VIEW_SPAN = 1.4f
-private const val VIEW_BEHIND = 0.35f
+private const val VIEW_SPAN = 1.1f
+private const val VIEW_BEHIND = 0.36f
+
+/** Pixels per race unit across the river: about 70% of a 16:9 screen's width, never wider than the space it has. */
+internal fun riverUnit(width: Float, height: Float) = minOf(width, height * 1.1f)
 private const val GO_SECONDS = 0.8f
 
 /** Boats are drawn larger than their hit circle so they read on a TV across the room. */
@@ -46,7 +52,7 @@ private const val LOG_DRAW_SCALE = 1.5f
 fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier, time: Float = fx.time) {
     val text = rememberTextMeasurer()
     Canvas(modifier) {
-        val unit = minOf(size.width, size.height * 0.8f)
+        val unit = riverUnit(size.width, size.height)
         val (shakeX, shakeY) = fx.camera.shakeOffset(time)
         val left = (size.width - unit) / 2 + shakeX * unit
         val bottom = fx.camera.y - VIEW_BEHIND + shakeY
@@ -102,8 +108,11 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
                 degrees = roll + boat.lean * 14f + wobble,
                 scaleX = 1f + 0.22f * squash,
                 scaleY = 1f - 0.18f * squash,
+                sail = boat.player.sail,
             )
-            // Name under the hull so everyone on the sofa can find their own boat.
+        }
+        // Names after every hull, under each boat on a dark plate, so everyone on the sofa finds their own boat over water, lanterns and other boats.
+        snapshot.boats.forEach { boat ->
             drawWord(
                 text,
                 boat.player.name,
@@ -111,7 +120,8 @@ fun RiverView(snapshot: RaceSnapshot, fx: RiverFx, modifier: Modifier = Modifier
                 24.sp,
                 Palette.player(boat.player.colour),
                 1f,
-                0.95f,
+                1f,
+                plate = Palette.night,
             )
         }
         fx.particles.live.filter { it.kind == Kind.Spark }.forEach {
@@ -171,11 +181,17 @@ internal fun DrawScope.drawWord(
     scale: Float,
     alpha: Float,
     maxWidth: Float = Float.MAX_VALUE,
+    plate: Color? = null,
 ) {
     if (alpha <= 0f || scale <= 0f) return
     val layout = text.measure(word, TextStyle(color = colour, fontSize = fontSize, fontWeight = FontWeight.Bold))
     val fit = scale * minOf(1f, maxWidth / layout.size.width)
     withTransform({ scale(fit, fit, at) }) {
+        if (plate != null) {
+            val pad = Offset(layout.size.height * 0.35f, layout.size.height * 0.05f)
+            val half = Offset(layout.size.width / 2f, layout.size.height / 2f) + pad
+            drawRoundRect(plate.copy(alpha = alpha.coerceIn(0f, 1f)), at - half, Size(half.x * 2, half.y * 2), CornerRadius(half.y))
+        }
         drawText(layout, alpha = alpha.coerceIn(0f, 1f), topLeft = at - Offset(layout.size.width / 2f, layout.size.height / 2f))
     }
 }
@@ -208,18 +224,20 @@ private fun DrawScope.drawRipples(left: Float, unit: Float, bottom: Float) {
 }
 
 /** A folded paper boat centred on [at] with hull half-width about [r], tilted by [degrees] and squashed by the scales. */
-internal fun DrawScope.drawBoat(at: Offset, r: Float, colour: Color, degrees: Float = 0f, scaleX: Float = 1f, scaleY: Float = 1f) {
+internal fun DrawScope.drawBoat(
+    at: Offset,
+    r: Float,
+    colour: Color,
+    degrees: Float = 0f,
+    scaleX: Float = 1f,
+    scaleY: Float = 1f,
+    sail: List<List<Float>> = emptyList(),
+) {
     val hull = Path().apply {
         moveTo(at.x - r * 1.1f, at.y)
         lineTo(at.x + r * 1.1f, at.y)
         lineTo(at.x + r * 0.7f, at.y + r * 0.7f)
         lineTo(at.x - r * 0.7f, at.y + r * 0.7f)
-        close()
-    }
-    val sail = Path().apply {
-        moveTo(at.x, at.y - r * 1.5f)
-        lineTo(at.x + r * 0.9f, at.y - r * 0.05f)
-        lineTo(at.x - r * 0.9f, at.y - r * 0.05f)
         close()
     }
     val pivot = at.copy(y = at.y + r * 0.7f)
@@ -228,9 +246,37 @@ internal fun DrawScope.drawBoat(at: Offset, r: Float, colour: Color, degrees: Fl
         scale(scaleX, scaleY, pivot)
     }) {
         drawPath(hull, colour)
-        drawPath(sail, Palette.paper)
+        drawSail(Rect(at.x - r * 0.9f, at.y - r * 1.5f, at.x + r * 0.9f, at.y - r * 0.05f), sail)
     }
 }
+
+/** A paper sail filling the triangle in [box] (apex top middle), with the player's [strokes] inked on it and clipped to it. */
+internal fun DrawScope.drawSail(box: Rect, strokes: List<List<Float>>) {
+    val sail = Path().apply {
+        moveTo(box.center.x, box.top)
+        lineTo(box.right, box.bottom)
+        lineTo(box.left, box.bottom)
+        close()
+    }
+    drawPath(sail, Palette.paper)
+    if (strokes.isEmpty()) return
+    val width = box.width * SAIL_INK_WIDTH
+    fun at(stroke: List<Float>, i: Int) = Offset(box.left + stroke[2 * i] * box.width, box.top + stroke[2 * i + 1] * box.height)
+    clipPath(sail) {
+        strokes.forEach { stroke ->
+            if (stroke.size == 2) {
+                drawCircle(Palette.night, width / 2, at(stroke, 0))
+            } else {
+                val line = Path()
+                for (i in 0 until stroke.size / 2) at(stroke, i).let { if (i == 0) line.moveTo(it.x, it.y) else line.lineTo(it.x, it.y) }
+                drawPath(line, Palette.night, style = Stroke(width, cap = StrokeCap.Round, join = StrokeJoin.Round))
+            }
+        }
+    }
+}
+
+/** Ink width as a share of the sail's width, so a drawing reads the same on a lobby boat and a race boat. */
+private const val SAIL_INK_WIDTH = 0.07f
 
 /** Lantern and confetti particles in results-screen units: x across 0..1, y up from the bottom 0..1. */
 internal fun DrawScope.drawSkyParticles(fx: RiverFx) {

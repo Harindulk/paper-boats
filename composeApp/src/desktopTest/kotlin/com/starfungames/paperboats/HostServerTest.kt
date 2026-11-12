@@ -107,6 +107,31 @@ class HostServerTest {
     }
 
     @Test
+    fun aDrawnSailReachesTheHostAndComesBackAfterADrop() = runBlocking {
+        val host = PartyHost()
+        val server = startHostServer(host, port = 0)
+        val url = "ws://127.0.0.1:${server.engine.resolvedConnectors().first().port}/ws"
+        val phone = ControllerClient(HttpClient(CIO) { install(WebSockets) })
+        val star = listOf(listOf(0.5f, 0.1f, 0.2f, 0.9f, 0.8f, 0.4f))
+        suspend fun sailArrives() = withTimeout(5_000) { while (host.players.singleOrNull()?.sail != star) delay(20) }
+        try {
+            val first = launch { phone.run(url, "Ana", rejoinId = null) {} }
+            withTimeout(5_000) { while (host.players.isEmpty()) delay(20) }
+            phone.sendSail(star)
+            phone.send(PlayerInput(steer = 1f)) // an input right after must not swallow the sail
+            sailArrives()
+            first.cancel()
+            withTimeout(5_000) { while (host.players.isNotEmpty()) delay(20) } // in the lobby a drop frees the seat
+            launch { phone.run(url, "Ana", rejoinId = null) {} }
+            sailArrives()
+            coroutineContext.cancelChildren()
+        } finally {
+            phone.close()
+            server.stop(100, 500)
+        }
+    }
+
+    @Test
     fun phoneThatReconnectsKeepsItsBoat() = runBlocking {
         val host = PartyHost(roundSeconds = 30f)
         val server = startHostServer(host, port = 0)

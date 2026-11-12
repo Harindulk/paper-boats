@@ -28,6 +28,7 @@ class RiverFx(seed: Long = 7) {
     private val random = Random(seed)
     private val paddledAt = mutableMapOf<Int, Float>()
     private val arrivedAt = mutableMapOf<Int, Float>()
+    private val sails = mutableMapOf<Int, Pair<List<List<Float>>, Float>>()
     private val wakeDue = mutableMapOf<Int, Float>()
     private val pending = mutableListOf<Pop>()
     private var lanternsLeft = 0
@@ -135,11 +136,19 @@ class RiverFx(seed: Long = 7) {
         confettiUntil = time + CONFETTI_SECONDS
     }
 
-    /** Records when each player first appeared, so their boat can pop onto the lobby river. */
+    /** Records when each player first appeared and when their sail drawing last changed, so both can pop on the lobby river. */
     fun noteArrivals(players: List<Player>) {
-        arrivedAt.keys.retainAll(players.map { it.id }.toSet())
-        players.forEach { arrivedAt.getOrPut(it.id) { time } }
+        val ids = players.map { it.id }.toSet()
+        arrivedAt.keys.retainAll(ids)
+        sails.keys.retainAll(ids)
+        players.forEach {
+            arrivedAt.getOrPut(it.id) { time }
+            if (it.sail.isNotEmpty() && sails[it.id]?.first != it.sail) sails[it.id] = it.sail to time
+        }
     }
+
+    /** Seconds since [playerId]'s sail drawing arrived; large when they have none, so it draws at rest. */
+    fun sailAge(playerId: Int): Float = sails[playerId]?.let { time - it.second } ?: 60f
 
     /** Seconds since [playerId] joined; large when unknown so it draws at rest. */
     fun arrival(playerId: Int): Float = arrivedAt[playerId]?.let { time - it } ?: 60f

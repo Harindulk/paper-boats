@@ -11,6 +11,7 @@ import com.starfungames.paperboats.ui.HostEntry
 import com.starfungames.paperboats.ui.LostHost
 import com.starfungames.paperboats.ui.NameEntry
 import com.starfungames.paperboats.ui.RaceResults
+import com.starfungames.paperboats.ui.SailPad
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertTrue
@@ -27,6 +28,17 @@ class ControllerRenderTest {
 
     @Test
     fun nameEntry() = save("name") { NameEntry("Harindu", onName = {}, onJoin = {}) }
+
+    @Test
+    fun drawYourSail() = save("sail") { SailPad(colour = 3, initial = SampleSails.smiley, onDone = {}) }
+
+    @Test
+    fun drawYourSailBlank() = save("sail-blank") { SailPad(colour = 0, initial = emptyList(), onDone = {}) }
+
+    @Test
+    fun resultsWithRedraw() = save("results-redraw") {
+        RaceResults(colour = 2, HostMessage.Status(Phase.Results, score = 4, place = 3, secondsLeft = 0), onRedraw = {})
+    }
 
     @Test
     fun countdown() = save("countdown") { Countdown(colour = 1, text = "3") }

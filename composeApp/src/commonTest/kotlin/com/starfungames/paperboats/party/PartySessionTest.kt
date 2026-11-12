@@ -1,6 +1,7 @@
 package com.starfungames.paperboats.party
 
 import com.starfungames.paperboats.game.Paddled
+import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
 import com.starfungames.paperboats.game.River
 import com.starfungames.paperboats.protocol.BuzzKind
@@ -262,5 +263,69 @@ class PartySessionTest {
             withAward,
             ProtocolJson.decodeFromString(HostMessage.serializer(), ProtocolJson.encodeToString(HostMessage.serializer(), withAward)),
         )
+    }
+
+    private fun lobbyWithAna(): Pair<PartySession, Int> = PartySession().let { it to it.join("Ana")!!.id }
+
+    @Test
+    fun aSailIsKeptAndClampedIntoTheSail() {
+        val (party, ana) = lobbyWithAna()
+        party.sail(ana, listOf(listOf(0.1f, 0.2f, 0.5f, 0.5f), listOf(-3f, 0.5f, 1.4f, 2f)))
+        assertEquals(listOf(listOf(0.1f, 0.2f, 0.5f, 0.5f), listOf(0f, 0.5f, 1f, 1f)), party.players.single().sail)
+    }
+
+    @Test
+    fun brokenStrokesAreDropped() {
+        val (party, ana) = lobbyWithAna()
+        val good = listOf(0.3f, 0.3f)
+        party.sail(ana, listOf(listOf(0.1f, Float.NaN), listOf(0.1f, 0.2f, 0.3f), emptyList(), listOf(Float.POSITIVE_INFINITY, 0f), good))
+        assertEquals(listOf(good), party.players.single().sail)
+    }
+
+    @Test
+    fun aHugeSailIsCutToTheCap() {
+        val (party, ana) = lobbyWithAna()
+        val long = List(PartySession.MAX_SAIL_POINTS * 2 + 10) { 0.5f }
+        party.sail(ana, List(PartySession.MAX_SAIL_STROKES + 5) { long })
+        val sail = party.players.single().sail
+        assertEquals(PartySession.MAX_SAIL_STROKES, sail.size)
+        assertTrue(sail.all { it.size == PartySession.MAX_SAIL_POINTS * 2 })
+    }
+
+    @Test
+    fun sailsFromStrangersAreIgnored() {
+        val (party, _) = lobbyWithAna()
+        party.sail(99, listOf(listOf(0.5f, 0.5f)))
+        assertEquals(emptyList(), party.players.single().sail)
+    }
+
+    @Test
+    fun aSailCanChangeBetweenRacesButNotDuringOne() {
+        val party = PartySession(roundSeconds = 1f)
+        val ana = party.join("Ana")!!.id
+        val star = listOf(listOf(0.5f, 0.1f, 0.6f, 0.9f))
+        party.sail(ana, star)
+        party.start()
+        party.sail(ana, listOf(listOf(0.9f, 0.9f)))
+        party.tick(PartySession.COUNTDOWN_SECONDS)
+        party.sail(ana, listOf(listOf(0.9f, 0.9f)))
+        assertEquals(star, party.players.single().sail, "no redraw in the countdown or the race")
+        assertEquals(star, party.snapshot()!!.boats.single().player.sail, "the race carries the sail to the big screen")
+        repeat(80) { party.tick(1f / 60f) }
+        assertEquals(Phase.Results, party.phase)
+        party.sail(ana, emptyList())
+        assertEquals(emptyList(), party.players.single().sail, "the results let a player redraw, or wipe it")
+    }
+
+    @Test
+    fun sailMessagesRoundTripAndOldJoinsAndPlayersStillDecode() {
+        val sail: ControllerMessage = ControllerMessage.Sail(listOf(listOf(0.25f, 0.5f, 0.75f, 1f)))
+        val json = ProtocolJson.encodeToString(ControllerMessage.serializer(), sail)
+        assertEquals(sail, ProtocolJson.decodeFromString(ControllerMessage.serializer(), json))
+        assertEquals(
+            ControllerMessage.Join("Ana"),
+            ProtocolJson.decodeFromString(ControllerMessage.serializer(), """{"type":"join","name":"Ana"}"""),
+        )
+        assertEquals(Player(1, "Ana", 0), ProtocolJson.decodeFromString(Player.serializer(), """{"id":1,"name":"Ana","colour":0}"""))
     }
 }

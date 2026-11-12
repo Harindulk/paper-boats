@@ -114,6 +114,19 @@ class RiverFxTest {
     }
 
     @Test
+    fun aNewSailIsTimedSoItCanPop() {
+        val fx = RiverFx()
+        fx.noteArrivals(listOf(ana))
+        assertTrue(fx.sailAge(ana.id) > 10f, "a plain sail never pops")
+        fx.run(0.5f, null)
+        fx.noteArrivals(listOf(ana.copy(sail = listOf(listOf(0.5f, 0.5f)))))
+        assertEquals(0f, fx.sailAge(ana.id))
+        fx.run(0.3f, null)
+        fx.noteArrivals(listOf(ana.copy(sail = listOf(listOf(0.5f, 0.5f)))))
+        assertEquals(0.3f, fx.sailAge(ana.id), 0.02f, "the same sail again does not pop twice")
+    }
+
+    @Test
     fun aGoldLanternPopsPlusTwoWithMoreSparks() {
         val plain = RiverFx().apply { onEvents(listOf(LightCollected(1, 0.4f, 3f))) }
         val gold = RiverFx().apply { onEvents(listOf(LightCollected(1, 0.4f, 3f, value = 2))) }

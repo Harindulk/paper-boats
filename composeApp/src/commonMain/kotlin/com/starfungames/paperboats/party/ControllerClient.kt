@@ -21,11 +21,20 @@ class ControllerClient(private val http: HttpClient = HttpClient { install(WebSo
     private val outbox = Channel<ControllerMessage>(Channel.CONFLATED)
     private var last: PlayerInput? = null
 
+    // The sail has its own queue so a stream of inputs never replaces it, and is kept to resend on every (re)join.
+    private val sails = Channel<ControllerMessage.Sail>(Channel.CONFLATED)
+    private var sail: ControllerMessage.Sail? = null
+
     /** Queues the latest input; older unsent inputs are dropped, only the newest matters. */
     fun send(input: PlayerInput) {
         if (input == last) return
         last = input
         outbox.trySend(ControllerMessage.Input(input.steer, input.paddle))
+    }
+
+    /** Sends the player's sail drawing now (or as soon as connected) and again after any reconnect. */
+    fun sendSail(strokes: List<List<Float>>) {
+        sail = ControllerMessage.Sail(strokes).also { sails.trySend(it) }
     }
 
     /**
@@ -35,16 +44,17 @@ class ControllerClient(private val http: HttpClient = HttpClient { install(WebSo
     suspend fun run(url: String, name: String, rejoinId: Int?, onMessage: (HostMessage) -> Unit) {
         last = null // a new host session has no inputs yet, so resend even an unchanged one
         http.webSocket(url) {
-            send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), ControllerMessage.Join(name, rejoinId))))
+            suspend fun write(message: ControllerMessage) =
+                send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), message)))
+            write(ControllerMessage.Join(name, rejoinId))
+            sail?.let { sails.trySend(it) }
             coroutineScope {
-                val writer = launch {
-                    // A plain loop, not consumeEach: cancelling this writer must leave the outbox open for the next run.
-                    for (message in outbox) send(Frame.Text(ProtocolJson.encodeToString(ControllerMessage.serializer(), message)))
-                }
+                // Plain loops, not consumeEach: cancelling these writers must leave the queues open for the next run.
+                val writers = listOf(launch { for (message in outbox) write(message) }, launch { for (message in sails) write(message) })
                 for (frame in incoming) {
                     if (frame is Frame.Text) onMessage(ProtocolJson.decodeFromString(HostMessage.serializer(), frame.readText()))
                 }
-                writer.cancel()
+                writers.forEach { it.cancel() }
             }
         }
     }

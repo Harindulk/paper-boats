@@ -10,8 +10,9 @@ import kotlin.random.Random
 /** What one player is doing right now, as sent by their controller. */
 data class PlayerInput(val steer: Float = 0f, val paddle: Boolean = false)
 
+/** [sail] is the player's drawing: strokes of x, y pairs in 0..1 sail space (apex at the top middle, the boom along y = 1). */
 @Serializable
-data class Player(val id: Int, val name: String, val colour: Int)
+data class Player(val id: Int, val name: String, val colour: Int, val sail: List<List<Float>> = emptyList())
 
 /**
  * A river race. The river runs upward: x is across (0..1), y is distance travelled.

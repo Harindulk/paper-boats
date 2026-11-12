@@ -61,6 +61,9 @@ fun ControllerApp(
     var lastBuzz by remember { mutableStateOf<BuzzEvent?>(null) }
     var sawCountdown by remember { mutableStateOf(false) }
     var showGo by remember { mutableStateOf(false) }
+    var sail by remember { mutableStateOf(emptyList<List<Float>>()) }
+    // A fresh player draws their sail once they have a boat (so the sail sits on their colour); a reload skips it.
+    var drawing by remember { mutableStateOf(joins == 0) }
 
     if (joins == 0) {
         NameEntry(name, onName = { name = it.take(PartySession.MAX_NAME) }, onJoin = { joins++ })
@@ -99,6 +102,7 @@ fun ControllerApp(
     }
     val phase = status?.phase
     LaunchedEffect(phase) {
+        if (phase == Phase.Countdown || phase == Phase.Racing) drawing = false // the host takes sails between races only
         if (phase == Phase.Countdown) sawCountdown = true
         if (phase == Phase.Racing && sawCountdown) {
             sawCountdown = false
@@ -112,9 +116,15 @@ fun ControllerApp(
     when {
         lost -> LostHost(onRejoin = { joins++ }, changeHost)
 
+        drawing && welcomed -> SailPad(colour, sail) {
+            if (it.isNotEmpty() || sail.isNotEmpty()) client.sendSail(it)
+            sail = it
+            drawing = false
+        }
+
         current?.phase == Phase.Countdown -> Countdown(colour, current.countdown.toString())
 
-        current?.phase == Phase.Results -> RaceResults(colour, current)
+        current?.phase == Phase.Results -> RaceResults(colour, current, onRedraw = { drawing = true })
 
         else -> Box(Modifier.fillMaxSize()) {
             val race = current?.takeIf { welcomed && it.phase == Phase.Racing }
@@ -171,7 +181,7 @@ internal fun Countdown(colour: Int, text: String) {
 }
 
 @Composable
-internal fun RaceResults(colour: Int, status: HostMessage.Status) {
+internal fun RaceResults(colour: Int, status: HostMessage.Status, onRedraw: (() -> Unit)? = null) {
     val pop = rememberPop(status.place)
     Column(
         Modifier.fillMaxSize().background(Palette.player(colour)).padding(24.dp),
@@ -198,6 +208,14 @@ internal fun RaceResults(colour: Int, status: HostMessage.Status) {
             BasicText(award.substringAfter(". ", ""), style = Body.copy(color = Palette.night))
         }
         BasicText("Wait for the next race", Modifier.padding(top = 48.dp), style = Body.copy(color = Palette.night.copy(alpha = 0.7f)))
+        if (onRedraw != null) {
+            BasicText(
+                "Redraw sail",
+                Modifier.padding(top = 8.dp).background(Palette.night, RoundedCornerShape(50)).clickable(onClick = onRedraw)
+                    .padding(horizontal = 28.dp, vertical = 18.dp),
+                style = Body.copy(color = Palette.paper),
+            )
+        }
     }
 }
 

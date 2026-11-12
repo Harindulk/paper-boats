@@ -108,7 +108,12 @@ class PartyHost(roundSeconds: Float = 60f) {
                 }
                 for (frame in socket.incoming) {
                     val message = (frame as? Frame.Text)?.let(::decode)
-                    if (message is ControllerMessage.Input && outboxes[player.id] === outbox) input(player.id, message.toPlayerInput())
+                    if (outboxes[player.id] !== outbox) continue
+                    when (message) {
+                        is ControllerMessage.Input -> input(player.id, message.toPlayerInput())
+                        is ControllerMessage.Sail -> synchronized(party) { party.sail(player.id, message.strokes) }
+                        else -> Unit
+                    }
                 }
                 outbox.close()
             }
@@ -153,7 +158,10 @@ class PartyHost(roundSeconds: Float = 60f) {
 /** Serves the phone controller at / and the game link at /ws. Port 0 picks any free port. */
 fun startHostServer(host: PartyHost, port: Int = DEFAULT_PORT): EmbeddedServer<*, *> = embeddedServer(CIO, port = port, host = "0.0.0.0") {
     install(Compression) { gzip() }
-    install(WebSockets) { pingPeriod = 10.seconds }
+    install(WebSockets) {
+        pingPeriod = 10.seconds
+        maxFrameSize = 64 * 1024L // a full sail is about 25 KB; anything bigger is not a phone
+    }
     routing {
         staticResources("/", "controller")
         webSocket("/ws") { host.serve(this) }

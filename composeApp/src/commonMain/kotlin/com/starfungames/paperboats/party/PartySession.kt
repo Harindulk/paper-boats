@@ -73,6 +73,13 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         if (id in seated && id !in away) inputs[id] = input
     }
 
+    /** Paints [strokes] on a seated player's sail, between races only; untrusted input is cleaned by [cleanSail]. */
+    fun sail(id: Int, strokes: List<List<Float>>) {
+        if (phase != Phase.Lobby && phase != Phase.Results) return
+        val player = seated[id]?.takeIf { id !in away } ?: return
+        seated[id] = player.copy(sail = cleanSail(strokes))
+    }
+
     fun canStart(): Boolean = (phase == Phase.Lobby || phase == Phase.Results) && seated.keys.any { it !in away }
 
     /** Starts the countdown; players who left during the last round give up their seats now. */
@@ -136,5 +143,13 @@ class PartySession(private val roundSeconds: Float = Race.DEFAULT_LENGTH_SECONDS
         const val MAX_PLAYERS = 8
         const val MAX_NAME = 16
         const val COUNTDOWN_SECONDS = 3f
+        const val MAX_SAIL_STROKES = 24
+        const val MAX_SAIL_POINTS = 64
+
+        /** Drops strokes with an odd length or a non-finite number, clamps points into 0..1 and cuts to the caps. */
+        fun cleanSail(strokes: List<List<Float>>): List<List<Float>> = strokes
+            .filter { it.isNotEmpty() && it.size % 2 == 0 && it.all(Float::isFinite) }
+            .take(MAX_SAIL_STROKES)
+            .map { stroke -> stroke.take(MAX_SAIL_POINTS * 2).map { it.coerceIn(0f, 1f) } }
     }
 }

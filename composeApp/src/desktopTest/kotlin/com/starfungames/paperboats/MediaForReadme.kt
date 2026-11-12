@@ -23,6 +23,7 @@ import com.starfungames.paperboats.ui.RaceResults
 import com.starfungames.paperboats.ui.RaceScreen
 import com.starfungames.paperboats.ui.Results
 import com.starfungames.paperboats.ui.RiverFx
+import com.starfungames.paperboats.ui.SailPad
 import java.io.File
 import kotlin.math.abs
 import kotlin.test.Test
@@ -36,7 +37,7 @@ class MediaForReadme {
     private val docs = File("../docs")
     private val frames = File("build/media-frames")
     private val dt = 1f / 60f
-    private val players = listOf("Ana", "Ben", "Chen", "Dilan").mapIndexed { i, n -> Player(i + 1, n, i) }
+    private val players = listOf("Ana", "Ben", "Chen", "Dilan").mapIndexed { i, n -> Player(i + 1, n, i, SampleSails.all[i]) }
 
     @Test
     fun media() {
@@ -152,6 +153,7 @@ class MediaForReadme {
         }
         val countdownFx = RiverFx().apply { step(0.5f, null) }
         png("countdown.png") { CountdownScreen(players, 2.85f, countdownFx, countdownFx.time, raceNumber = 2, river = River.LogjamBend) }
+        png("phone-sail.png", 390, 844, settle = true) { SailPad(colour = 1, initial = SampleSails.wave, onDone = {}) }
         png("phone-pad.png", 390, 844, settle = true) {
             ControllerPad(colour = 1, status = "7 lanterns · 9 s left", onInput = {}, modifier = Modifier.fillMaxSize(), place = "1st")
         }
