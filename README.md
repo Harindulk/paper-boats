@@ -24,10 +24,10 @@ on the TV and another on the phone.
 
 | Target | What it is | Kotlin lines | Shared from `commonMain` |
 |---|---|---:|---:|
-| Desktop (JVM) | The big screen and the server, for macOS, Windows and Linux | 1,675 | 88% |
-| Web (Kotlin/Wasm) | The phone controller, served by the desktop app | 1,500 | 98.5% |
-| Android | The same controller as an app | 1,503 | 98.3% |
-| Whole project | | 1,722 | 86% (1,478 lines) |
+| Desktop (JVM) | The big screen and the server, for macOS, Windows and Linux | 1,825 | 89% |
+| Web (Kotlin/Wasm) | The phone controller, served by the desktop app | 1,642 | 98.7% |
+| Android | The same controller as an app | 1,645 | 98.5% |
+| Whole project | | 1,872 | 86.5% (1,620 lines) |
 
 Lines are non-blank Kotlin lines without imports or comments, counted per source set. Platform code
 is what only that platform can do: the desktop starts the server, finds the LAN address and draws the
