@@ -1,8 +1,8 @@
 # Paper Boats
 
 A couch party game for up to eight people. The computer is the big screen, a night river full of
-floating lanterns. Everyone else grabs a boat with their phone: scan the QR code, type a name, then
-steer with one thumb and paddle with the other. Phones need nothing installed. The controller is a
+floating lanterns. Everyone else grabs a boat with their phone: scan the QR code, type a name, draw
+your own sail, then steer with one thumb and paddle with the other. Phones need nothing installed. The controller is a
 web page the game serves itself, compiled from the same Kotlin as the game. There is also an Android
 app.
 
@@ -78,6 +78,11 @@ guest or campus Wi-Fi that stops devices from seeing each other. A phone hotspot
 | Slide on the left half | Steer |
 | Press the right half | Paddle for a burst of speed |
 
+After you type your name, the phone shows a blank paper sail in your boat's colour. Draw on it with
+a finger: your initials, a face, a flag. Press Set sail and your drawing goes up on your boat on the
+big screen, so everyone can tell whose boat is whose in the lobby, the race and the results. Skip it
+and you sail plain paper. Between races the results screen on your phone lets you redraw it.
+
 Collect lanterns and keep off rocks and logs. Paddle into another boat to spin it out and take one of
 its lanterns. In the last ten seconds, golden hour, every lantern counts double. Most lanterns after
 60 seconds wins.
@@ -95,10 +100,10 @@ bumps taken, and Golden hour for the best last ten seconds. Your phone shows you
 award, and buzzes when you pick up a lantern, crash or win. If a phone drops off the Wi-Fi or the page
 reloads, it rejoins the race in the same boat.
 
-| | | |
-|---|---|---|
-| ![Lobby with the QR code](docs/lobby.png) | ![Countdown](docs/countdown.png) | ![Mid-race](docs/race.png) |
-| ![Golden hour](docs/golden-hour.png) | ![Results with awards](docs/results.png) | ![Phone controller](docs/phone-pad.png) |
+| | | | |
+|---|---|---|---|
+| ![Lobby with drawn sails and the QR code](docs/lobby.png) | ![Countdown](docs/countdown.png) | ![Mid-race](docs/race.png) | ![Golden hour](docs/golden-hour.png) |
+| ![Results with awards](docs/results.png) | ![Drawing a sail on the phone](docs/phone-sail.png) | ![Phone controller](docs/phone-pad.png) | ![Phone results](docs/phone-results.png) |
 
 ## How it works
 
@@ -113,16 +118,16 @@ reloads, it rejoins the race in the same boat.
 |---|---|
 | `game/Race.kt`, `River.kt` | The race: steering, paddling, lanterns, rocks, logs, whirlpools, ramming, golden hour, a catch-up current. No UI and no clock, deterministic for a seed. It reports what happened as `RaceEvent`s. |
 | `game/Award.kt` | Picks the awards from a race's events. |
-| `party/PartySession.kt` | Lobby, countdown, race, results and the next river; seats and colours for eight players; rejoining in the same boat. |
+| `party/PartySession.kt` | Lobby, countdown, race, results and the next river; seats and colours for eight players; rejoining in the same boat; checking each drawn sail before it goes on a boat. |
 | `protocol/Messages.kt` | Messages between phone and host as `kotlinx.serialization` sealed interfaces. |
 | `party/ControllerClient.kt` | The phone's WebSocket link (Ktor client), used by the browser, the Android app and the tests. |
-| `ui/` | Every screen in Compose: lobby, countdown, river, scoreboard and results on the big screen; address, name, pad and results on the phone. |
+| `ui/` | Every screen in Compose: lobby, countdown, river, scoreboard and results on the big screen; address, name, sail drawing, pad and results on the phone. |
 | `ui/fx/`, `ui/RiverFx.kt` | Easing, particles and a camera with screen shake, driven by race events. |
 
 ## Tests and style
 
 ```bash
-./gradlew :composeApp:desktopTest :androidApp:testDebugUnitTest   # 97 tests
+./gradlew :composeApp:desktopTest :androidApp:testDebugUnitTest   # 112 tests
 ./gradlew ktlintCheck                                             # Kotlin coding conventions
 ```
 
@@ -140,6 +145,7 @@ Style follows the official Kotlin coding conventions, checked by ktlint (`intell
 - [x] Web controller (Kotlin/Wasm)
 - [x] Android controller app
 - [x] Three rivers, ramming, golden hour, awards, reconnecting phones
+- [x] Draw your own sail on the phone
 - [ ] Sound
 - [ ] iOS controller app
 
