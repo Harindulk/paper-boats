@@ -9,3 +9,16 @@ local.properties
 *.iml
 .DS_Store
 .claude/
+
+# Private backup safety: internal notes, secrets, build output
+AGENTS.md
+.env
+.env.*
+!.env.example
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Bb]uilds/
+[Oo]bj/
+node_modules/
+dist/
