@@ -49,7 +49,8 @@ small sound `actual`.
 
 You don't need friends or phones to see it work.
 
-1. Install JDK 17 or newer, then run `./gradlew :composeApp:run` (`gradlew.bat` on Windows). The
+1. Clone the repo with `git clone https://github.com/Harindulk/paper-boats.git && cd paper-boats`.
+   Install JDK 17 or newer, then run `./gradlew :composeApp:run` (`gradlew.bat` on Windows). The
    first build downloads Gradle, Kotlin and the tools for the web build, so give it a few minutes.
 2. In the window that opens, press **K** twice to add two keyboard players (A / D / W and the arrow
    keys).
