@@ -59,24 +59,6 @@ class MediaForReadme {
         assertTrue(bytes.size > 1_000)
     }
 
-    /** Steers each boat at the nearest lantern ahead (leaning to its own lane so the boats spread out) and paddles on a per-player beat; Ben turns pirate in [RAM_FROM, RAM_TO]. */
-    private fun inputs(snapshot: RaceSnapshot, step: Int): Map<Int, PlayerInput> = snapshot.boats.associate { boat ->
-        val id = boat.player.id
-        val lane = Race.laneX(id - 1, snapshot.boats.size)
-        val pirate = id == 2 && snapshot.elapsed in RAM_FROM..RAM_TO
-        val targetX = if (pirate) {
-            snapshot.boats.filter { it !== boat }.minBy { abs(it.x - boat.x) + abs(it.y - boat.y) }.x
-        } else {
-            snapshot.lights.filter { it.y in boat.y + 0.03f..boat.y + 0.6f }.minByOrNull {
-                abs(it.x - boat.x) * 2 + abs(it.x - lane) * 2 +
-                    (it.y - boat.y)
-            }?.x
-                ?: lane
-        }
-        val paddle = if (pirate) step % 20 < 10 else step / (14 + id * 5) % 4 == 0
-        id to PlayerInput(steer = ((targetX - boat.x) * 10f).coerceIn(-1f, 1f), paddle = paddle)
-    }
-
     private fun race() {
         frames.deleteRecursively()
         frames.mkdirs()
@@ -88,7 +70,7 @@ class MediaForReadme {
         var busiest = -1f
         var goldenShot = false
         while (!race.finished) {
-            race.step(dt, inputs(race.snapshot(), step))
+            race.step(dt, botInputs(race.snapshot(), step, RAM_FROM..RAM_TO))
             val now = race.drainEvents()
             events += now
             fx.onEvents(now)
@@ -179,3 +161,22 @@ class MediaForReadme {
         const val RAM_TO = 11f
     }
 }
+
+/** Steers each boat at the nearest lantern ahead (leaning to its own lane so the boats spread out) and paddles on a per-player beat; Ben turns pirate in [ramWindow]. */
+internal fun botInputs(snapshot: RaceSnapshot, step: Int, ramWindow: ClosedFloatingPointRange<Float>): Map<Int, PlayerInput> =
+    snapshot.boats.associate { boat ->
+        val id = boat.player.id
+        val lane = Race.laneX(id - 1, snapshot.boats.size)
+        val pirate = id == 2 && snapshot.elapsed in ramWindow
+        val targetX = if (pirate) {
+            snapshot.boats.filter { it !== boat }.minBy { abs(it.x - boat.x) + abs(it.y - boat.y) }.x
+        } else {
+            snapshot.lights.filter { it.y in boat.y + 0.03f..boat.y + 0.6f }.minByOrNull {
+                abs(it.x - boat.x) * 2 + abs(it.x - lane) * 2 +
+                    (it.y - boat.y)
+            }?.x
+                ?: lane
+        }
+        val paddle = if (pirate) step % 20 < 10 else step / (14 + id * 5) % 4 == 0
+        id to PlayerInput(steer = ((targetX - boat.x) * 10f).coerceIn(-1f, 1f), paddle = paddle)
+    }

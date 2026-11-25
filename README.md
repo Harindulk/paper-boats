@@ -10,6 +10,11 @@ Made with Kotlin Multiplatform and Compose Multiplatform for the Kotlin Multipla
 
 ![Four boats racing on Lantern Creek](docs/race.gif)
 
+[![Demo video: a full party from the lobby to the awards, with sound](docs/demo-poster.png)](docs/demo.mp4)
+
+[Watch the 85-second demo with sound](docs/demo.mp4). Every frame is drawn by the game's own
+screens from a seeded race, with the big screen on the left and one player's phone on the right.
+
 ## Why multiplatform
 
 A party game like this needs three kinds of device to agree on one game: the screen everyone watches,
@@ -22,17 +27,23 @@ Ktor server. The browser controller compiles them to WebAssembly. The Android ap
 Android. Host and phone serialize the same `@Serializable` classes, so a message can't mean one thing
 on the TV and another on the phone.
 
+Sound works the same way. Every cue (the paddle splash, the lantern chime, the bump, the countdown
+and the finish fanfare) is synthesised as PCM in `commonMain`, so no target ships an audio file.
+Only playing it is platform code: one `expect fun play(cue: Cue)` with an `actual` per target,
+`javax.sound` on desktop, `AudioTrack` on Android and the Web Audio API in the browser.
+
 | Target | What it is | Kotlin lines | Shared from `commonMain` |
 |---|---|---:|---:|
-| Desktop (JVM) | The big screen and the server, for macOS, Windows and Linux | 1,825 | 89% |
-| Web (Kotlin/Wasm) | The phone controller, served by the desktop app | 1,642 | 98.7% |
-| Android | The same controller as an app | 1,645 | 98.5% |
-| Whole project | | 1,872 | 86.5% (1,620 lines) |
+| Desktop (JVM) | The big screen and the server, for macOS, Windows and Linux | 1,932 | 87.8% |
+| Web (Kotlin/Wasm) | The phone controller, served by the desktop app | 1,736 | 97.8% |
+| Android | The same controller as an app | 1,753 | 96.8% |
+| Whole project | | 2,027 | 83.7% (1,697 lines) |
 
 Lines are non-blank Kotlin lines without imports or comments, counted per source set. Platform code
 is what only that platform can do: the desktop starts the server, finds the LAN address and draws the
 QR code; the web entry point reads the page address, vibrates and remembers your seat in the browser;
-the Android activity does the same with `Vibrator` and `SharedPreferences`.
+the Android activity does the same with `Vibrator` and `SharedPreferences`. Each target also has its
+small sound `actual`.
 
 ## Try it alone in two minutes
 
@@ -66,7 +77,8 @@ instead of a blank page. The first load is about 4 MB, gzipped by the game.
 adb install -r androidApp/build/outputs/apk/debug/androidApp-debug.apk
 ```
 
-Open Paper Boats on the phone and type the address shown under the QR code.
+Open Paper Boats on the phone and type the address shown under the QR code. On the Android emulator
+the computer is `10.0.2.2`, so type `10.0.2.2:8642`.
 
 If phones can't connect, allow Java through the computer's firewall for private networks, and avoid
 guest or campus Wi-Fi that stops devices from seeing each other. A phone hotspot works well.
@@ -97,7 +109,9 @@ Each race moves to the next river:
 
 The results screen hands out awards: Pirate for the most lanterns stolen, Shipwreck for the most
 bumps taken, and Golden hour for the best last ten seconds. Your phone shows your place and your
-award, and buzzes when you pick up a lantern, crash or win. If a phone drops off the Wi-Fi or the page
+award, and buzzes and chimes when you pick up a lantern, crash or win. The big screen plays a splash
+for every paddle, a chime for every lantern (a brighter one in golden hour), a thud for every crash,
+the countdown beeps and a fanfare at the finish. If a phone drops off the Wi-Fi or the page
 reloads, it rejoins the race in the same boat.
 
 | | | | |
@@ -123,21 +137,25 @@ reloads, it rejoins the race in the same boat.
 | `party/ControllerClient.kt` | The phone's WebSocket link (Ktor client), used by the browser, the Android app and the tests. |
 | `ui/` | Every screen in Compose: lobby, countdown, river, scoreboard and results on the big screen; address, name, sail drawing, pad and results on the phone. |
 | `ui/fx/`, `ui/RiverFx.kt` | Easing, particles and a camera with screen shake, driven by race events. |
+| `audio/Sound.kt` | Synthesises every sound cue and maps race events to them; `expect fun play` is the one platform hook. |
 
 ## Tests and style
 
 ```bash
-./gradlew :composeApp:desktopTest :androidApp:testDebugUnitTest   # 112 tests
+./gradlew :composeApp:desktopTest :androidApp:testDebugUnitTest   # 118 tests on the JVM
+./gradlew :composeApp:wasmJsBrowserTest                           # the 89 shared tests again, as Wasm in headless Chrome
 ./gradlew ktlintCheck                                             # Kotlin coding conventions
 ```
 
 The tests cover the race rules, the party session, the effects maths and the network. In the network
 tests, phones running the real `ControllerClient` join a live host over WebSockets, race, reconnect
 to the same boat and download the gzipped controller. Every screen is also rendered off-screen to
-`composeApp/build/renders`.
+`composeApp/build/renders`. The shared tests run a second time compiled to WebAssembly, so the
+phone's build of the rules is checked too. `MEDIA=1` and `DEMO=1` re-render the README pictures and
+the demo video (see `MediaForReadme.kt` and `DemoVideo.kt`).
 
 Style follows the official Kotlin coding conventions, checked by ktlint (`intellij_idea` style, see
-`.editorconfig`). GitHub Actions runs the style check, the tests and all three builds on every push.
+`.editorconfig`). GitHub Actions runs the style check, both test runs and all three builds on every push.
 
 ## Status
 
@@ -146,8 +164,8 @@ Style follows the official Kotlin coding conventions, checked by ktlint (`intell
 - [x] Android controller app
 - [x] Three rivers, ramming, golden hour, awards, reconnecting phones
 - [x] Draw your own sail on the phone
-- [ ] Sound
-- [ ] iOS controller app
+- [x] Sound, synthesised in shared code
+- [ ] iOS controller app (on an iPhone, the web controller works in Safari 18.2+)
 
 ## Licence
 
