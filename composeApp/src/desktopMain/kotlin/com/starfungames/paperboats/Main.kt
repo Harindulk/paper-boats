@@ -26,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
+import com.starfungames.paperboats.audio.Cue
+import com.starfungames.paperboats.audio.cueFor
+import com.starfungames.paperboats.audio.play
 import com.starfungames.paperboats.game.Award
 import com.starfungames.paperboats.game.Player
 import com.starfungames.paperboats.game.PlayerInput
@@ -38,6 +41,7 @@ import com.starfungames.paperboats.ui.Palette
 import com.starfungames.paperboats.ui.RaceScreen
 import com.starfungames.paperboats.ui.Results
 import com.starfungames.paperboats.ui.RiverFx
+import kotlin.math.ceil
 
 fun main() = application {
     val host = remember { PartyHost() }
@@ -88,9 +92,15 @@ fun PartyScreen(host: PartyHost, joinUrl: String?, offline: String = NO_WIFI) {
             val next = host.phase
             val live = host.snapshot()
             if (next == Phase.Countdown && phase != Phase.Countdown) fx.newRace()
-            fx.onEvents(host.drainEvents()) // drained every frame so the host's buffer never grows
+            val events = host.drainEvents() // drained every frame so the host's buffer never grows
+            fx.onEvents(events)
+            events.forEach { play(cueFor(it)) }
+            val count = ceil(host.countdownLeft).toInt()
+            if (next == Phase.Countdown && count != ceil(countdown).toInt() && count > 0) play(Cue.Tick)
+            if (next == Phase.Racing && phase == Phase.Countdown) play(Cue.Go)
             if (next == Phase.Results && phase != Phase.Results) {
                 live?.standings?.firstOrNull()?.let(fx::finish)
+                play(Cue.Finish)
                 awards = host.awards()
             }
             fx.noteArrivals(host.players)

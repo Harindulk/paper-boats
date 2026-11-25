@@ -22,6 +22,8 @@ kotlin {
     wasmJs {
         browser {
             commonWebpackConfig { outputFileName = "controller.js" }
+            // The shared tests also run as Wasm in headless Chrome, so the phone's build of the rules is checked too.
+            testTask { useKarma { useChromeHeadless() } }
         }
         binaries.executable()
     }

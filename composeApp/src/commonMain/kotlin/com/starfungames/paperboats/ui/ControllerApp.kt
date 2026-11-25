@@ -26,6 +26,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.starfungames.paperboats.audio.cueFor
+import com.starfungames.paperboats.audio.play
 import com.starfungames.paperboats.party.ControllerClient
 import com.starfungames.paperboats.party.PartySession
 import com.starfungames.paperboats.protocol.BuzzKind
@@ -87,6 +89,7 @@ fun ControllerApp(
 
                         is HostMessage.Buzz -> {
                             buzz(message.kind)
+                            play(cueFor(message.kind))
                             lastBuzz = BuzzEvent(message.kind)
                         }
                     }
